@@ -2842,17 +2842,38 @@ plot_echam <- function(x, levs, varname='temp2', type='data',  ti=1,
                        addcontours=F, contvarname='gph500', conttype='data', contcol='black',
                        contlev=levs,wcol='black',colorbar=T){
   oldpar <- par(no.readonly=TRUE)
-  # plot specific lat range  
-  latpos <- match(which(x$lat>latlim[1]),which(x$lat<latlim[2]))
-  if (length(dim(x$data)) == 3){
-    x$data <- x$data[latpos,,,drop=F]
-  } else {
-    x$data <- x$data[latpos,,drop=F]
+  # plot specific lon/lat range (Joerg 2016/08)
+  for (i in 1:4) {
+    if (i==1) {
+      pos <- which(x$lat>latlim[1])
+    } else if (i==2){
+      pos <- which(x$lat<latlim[2])
+    } else if (i==3){
+      pos <- which(x$lon>lonlim[1])
+    } else if (i==4){
+      pos <- which(x$lon<lonlim[2])
+    } 
+    if (length(dim(x$data)) == 3){
+      x$data <- x$data[pos,,,drop=F]
+    } else {
+      x$data <- x$data[pos,,drop=F]
+    }
+    x$ensmean <- x$ensmean[pos,,drop=F] 
+    x$lon <- x$lon[pos]
+    x$lat <- x$lat[pos]
+    x$names <- x$names[pos]
   }
-  x$ensmean <- x$ensmean[latpos,,drop=F] 
-  x$lon <- x$lon[latpos]
-  x$lat <- x$lat[latpos]
-  x$names <- x$names[latpos]
+  # plot specific lat range  
+  # latpos <- match(which(x$lat>latlim[1]),which(x$lat<latlim[2]))
+  # if (length(dim(x$data)) == 3){
+  #   x$data <- x$data[latpos,,,drop=F]
+  # } else {
+  #   x$data <- x$data[latpos,,drop=F]
+  # }
+  # x$ensmean <- x$ensmean[latpos,,drop=F] 
+  # x$lon <- x$lon[latpos]
+  # x$lat <- x$lat[latpos]
+  # x$names <- x$names[latpos]
   dat.i <- which(x$names == varname)
   # Jonas Jan. 2014 for new ECHAM format 
   lons <- x$lon[x$names == varname]

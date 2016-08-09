@@ -7,7 +7,7 @@
 
 # switches
 #rm(list=ls())
-setwd('~/unibe/projects/EnSRF/r/src')
+setwd('~/unibe/projects/EnSRF/src')
 
 #real_proxies=F
 monthly=F
@@ -52,10 +52,10 @@ if ((monthly)&(sixmonstatevector)&(monthly_out)) {
   RE$ensmean <- RE$ensmean[,c(4,10)]
 }  
 
-figpath=paste0('../figures/',format(Sys.time(), "%Y%m%d_%H-%M_"),syr,'-',eyr)
+figpath=paste0('../figures/',format(Sys.time(), "%Y%m%d_%H-%M_"),syr,'-',eyr,'/')
 dir.create(figpath)
 
-source('EnSRF_functions.R')
+#source('EnSRF_functions.R')
 pnames <- paste(c('a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k'), ')', sep='')
 data.dim <- dim(echam$data)[c(1,2,2,3)]
 data.dim[2:3] <- c(s,data.dim[3]/s)
@@ -172,31 +172,82 @@ if (write_nc) {
 
 
 
-# plot sample time series for lon/lat:
-paste(validate$lon[676],validate$lat[676])
-pdf(paste(figpath,'/example_timeseries.pdf',sep=''), width=4.5, height=6, paper='special')
-  par(oma=c(0,0,0,0),mar=c(2,4,2,0.5),mfrow=c(3,1))
+# plot sample time series for Norway lon/lat:
+pdf(paste(figpath,'/example_timeseries_scandinavia.pdf',sep=''), width=4.5, height=6, paper='special')
+par(oma=c(0,0,0,0),mar=c(2,4,2,0.5),mfrow=c(3,1))
   #50yr summer temp
-  plot(validate$data[676,seq(2,100,2)],ylim=c(4,8),ty='l',col="blue",main="Temperature",
-       xlab='',ylab='ºC',xaxt='n')
-  lines(echam$ensmean[676,seq(2,100,2)],col="black")
-  lines(analysis$ensmean[676,seq(2,100,2)],col="red")
-  legend("topleft", c('Instrumental CRU TS3', 'CCC400', "EFK400"),col=c("blue", "black", "red"), 
-         lty=c(1,1,1),lwd=c(1,1,1),pt.cex=1, pt.lwd=1,inset=0.005, bg='white', 
-         box.col='white', cex=1)
-  #pch=rep(15,5)
+  pos <- 676
+  pos2 <- seq(2,100,2)
+  period <- validate$time[pos2]
+  plot(period,validate$data[pos,pos2],ylim=c(min(echam$data[pos,pos2,]),
+    max(echam$data[pos,pos2,])),ty='l',col=rgb(0,0,10,10,maxColorValue=10),
+    main="Temperature",xlab='',ylab='ºC',xaxt='n')
+  polygon(c(period,rev(period)),c(apply(echam$data[pos,pos2,],1,max),
+    rev(apply(echam$data[pos,pos2,],1,min))),density=NA,
+    col=rgb(1,1,1,3,maxColorValue=10))
+  lines(period,echam$ensmean[pos,pos2],col=rgb(0,0,0,10,maxColorValue=10))
+  polygon(c(period,rev(period)),c(apply(analysis$data[pos,pos2,],1,max),
+    rev(apply(analysis$data[pos,pos2,],1,min))),density=NA,
+    col=rgb(10,0,0,3,maxColorValue=10))
+  lines(period,analysis$ensmean[pos,pos2],col=rgb(10,0,0,10,maxColorValue=10))
+  lines(period,validate$data[pos,pos2],ylim=c(min(echam$data[pos,pos2,]),
+    max(echam$data[pos,pos2,])),col=rgb(0,0,10,10,maxColorValue=10))
   #precip
-  plot(validate$data[4608+676,seq(2,100,2)],ylim=c(65,112),ty='l',col="blue",main="Precipitation",
-       xlab='',ylab='mm',xaxt='n')
-  lines(echam$ensmean[4608+676,seq(2,100,2)],col="black")
-  lines(analysis$ensmean[4608+676,seq(2,100,2)],col="red")
+  plot(period,validate$data[4608+pos,pos2],ylim=c(min(echam$data[4608+pos,pos2,]),
+    max(echam$data[4608+pos,pos2,])),ty='l',col=rgb(0,0,10,10,maxColorValue=10),
+    main="Precipitation",xlab='',ylab='mm',xaxt='n')
+  polygon(c(period,rev(period)),c(apply(echam$data[4608+pos,pos2,],1,max),
+    rev(apply(echam$data[4608+pos,pos2,],1,min))),density=NA,
+    col=rgb(1,1,1,3,maxColorValue=10))
+  lines(period,echam$ensmean[4608+pos,pos2],col=rgb(0,0,0,10,maxColorValue=10))
+  polygon(c(period,rev(period)),c(apply(analysis$data[4608+pos,pos2,],1,max),
+    rev(apply(analysis$data[4608+pos,pos2,],1,min))),density=NA,
+    col=rgb(10,0,0,3,maxColorValue=10))
+  lines(period,analysis$ensmean[4608+pos,pos2],col=rgb(10,0,0,10,maxColorValue=10))
+  lines(period,validate$data[4608+pos,pos2],ylim=c(min(echam$data[pos,pos2,]),
+    max(echam$data[4608+pos,pos2,])),col=rgb(0,0,10,10,maxColorValue=10))
   #slp
-  plot(validate$time[seq(2,100,2)],validate$data[2*4608+676,seq(2,100,2)],
-       ylim=c(1009,1014),ty='l',col="blue",main="SLP",xlab='Year',ylab='hPA')
-  lines(echam$time[seq(2,100,2)],echam$ensmean[2*4608+676,seq(2,100,2)],col="black")
-  lines(analysis$time[seq(2,100,2)],analysis$ensmean[2*4608+676,seq(2,100,2)],col="red")
+  plot(period,validate$data[2*4608+pos,pos2],ylim=c(min(echam$data[2*4608+pos,pos2,]),
+    max(echam$data[2*4608+pos,pos2,])),ty='l',col=rgb(0,0,10,10,maxColorValue=10),
+    main="SLP",xlab='',ylab='hPa')
+  polygon(c(period,rev(period)),c(apply(echam$data[2*4608+pos,pos2,],1,max),
+    rev(apply(echam$data[2*4608+pos,pos2,],1,min))),density=NA,
+    col=rgb(1,1,1,3,maxColorValue=10))
+  lines(period,echam$ensmean[2*4608+pos,pos2],col=rgb(0,0,0,10,maxColorValue=10))
+  polygon(c(period,rev(period)),c(apply(analysis$data[2*4608+pos,pos2,],1,max),
+    rev(apply(analysis$data[2*4608+pos,pos2,],1,min))),density=NA,
+    col=rgb(10,0,0,3,maxColorValue=10))
+  lines(period,analysis$ensmean[2*4608+pos,pos2],col=rgb(10,0,0,10,maxColorValue=10))
+  lines(period,validate$data[2*4608+pos,pos2],ylim=c(min(echam$data[pos,pos2,]),
+    max(echam$data[2*4608+pos,pos2,])),col=rgb(0,0,10,10,maxColorValue=10))
+  legend("bottomleft", c('Instrumental CRU TS3', 'CCC400', "EFK400"),col=c("blue", "black", "red"), 
+    lty=c(1,1,1),lwd=c(1,1,1),pt.cex=1, pt.lwd=1,inset=0.005, bg='white', 
+    box.col='white', cex=1)
 dev.off()
 
+# plot sample time series for lon/lat:
+paste(validate$lon[278],validate$lat[278])
+pdf(paste(figpath,'/example_timeseries_greenland.pdf',sep=''), width=4.5, height=6, paper='special')
+par(oma=c(0,0,0,0),mar=c(2,4,2,0.5),mfrow=c(3,1))
+#50yr summer temp
+plot(validate$data[278,pos2],ylim=c(-15,-12),ty='l',col="blue",main="Temperature",
+     xlab='',ylab='ºC',xaxt='n')
+lines(echam$ensmean[278,pos2],col="black")
+lines(analysis$ensmean[278,pos2],col="red")
+#precip
+plot(validate$data[4608+278,pos2],ylim=c(11,14),ty='l',col="blue",main="Precipitation",
+     xlab='',ylab='mm',xaxt='n')
+lines(echam$ensmean[4608+278,pos2],col="black")
+lines(analysis$ensmean[4608+278,pos2],col="red")
+#slp
+plot(validate$time[pos2],validate$data[2*4608+278,pos2],
+     ylim=c(1013,1021),ty='l',col="blue",main="SLP",xlab='Year',ylab='hPA')
+lines(echam$time[pos2],echam$ensmean[2*4608+278,pos2],col="black")
+lines(analysis$time[pos2],analysis$ensmean[2*4608+278,pos2],col="red")
+legend("bottomleft", c('Instrumental CRU TS3', 'CCC400', "EFK400"),col=c("blue", "black", "red"), 
+       lty=c(1,1,1),lwd=c(1,1,1),pt.cex=1, pt.lwd=1,inset=0.005, bg='white', 
+       box.col='white', cex=1)
+dev.off()
 
  
 #chose timestep for sample year plots
@@ -290,17 +341,20 @@ legend("topleft", c('TRW', 'MXD', "Docum. temp.", "Instr. temp.", "Instr. SLP"),
        inset=0.005, bg='white', box.col='white', cex=1)
 dev.off()
 
-#stat_yr=1850
-#tmp <- load(paste0('../data/prepplot/analysis_',yr,'.Rdata'))
-#cali <- tmp$calibrate
+#stat_yr=1880
+#load(paste0(datadir,"EnSRF_analysis/prepplot_v3_seasonal/analysis_",stat_yr,".Rdata"))
+#cali <- calibrate
 dat <- echam
-dat$data <- array(RE.anom$ensmean*0, c(dim(RE$ensmean)[1], 1, dim(RE$ensmean)[2]))
-pdf(paste(figpath,'stat_locations.pdf',sep='/'), width=9, height=3.5, paper='special')
+dat$data <- array(corr$ensmean*0, c(dim(corr$ensmean)[1], 1, dim(corr$ensmean)[2]))
+dat$lat <- dat$lat[1:dim(dat$data)[1]]
+dat$lon <- dat$lon[1:dim(dat$data)[1]]
+dat$names <- dat$names[1:dim(dat$data)[1]]
+pdf(paste0(figpath,'stat_locations_',stat_yr,'.pdf'), width=9, height=3.5, paper='special')
 #layout(matrix(c(1,2,3,3), 2, 2, byrow = TRUE), height=c(3,1))
 layout(matrix(c(1,2), 1, 2, byrow = TRUE))
 par(oma=c(0,0,0,0))
 levs <- c(-Inf, -10,-3,-1,-0.3, -.1, 0.05,0.2,0.4,0.6,0.8,1)
-plot_echam(dat,cex.pt=1.5,names=pnames[1:dim(dat$data)[3]],lev=levs,colorbar=F,
+plot_echam(dat,type='data',cex.pt=1.5,names=pnames[1:dim(dat$data)[3]],lev=levs,colorbar=F,
            stations=cali,st.col=NULL,statpanel=c(1,2),add=T)
 dev.off()
 

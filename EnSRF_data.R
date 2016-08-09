@@ -15,7 +15,7 @@
 # R --arch=x86_64 CMD SHLIB EnSRF.f95 # to compile EnSRF.f95 on 64bit MAC
 
 rm(list=ls())
-setwd('~/unibe/projects/EnSRF/r/src')
+setwd('~/unibe/projects/EnSRF/src')
 source('EnSRF_functions.R')
 #source('r_functions_joerg.r')
 

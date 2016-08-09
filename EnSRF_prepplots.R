@@ -15,7 +15,7 @@ load_prepplot=T # ATTENTION check if folder prepplot on scratch contains monthly
 
 load_image=T # directly load image for syr-eyr period: 1902-2001 or 1651-1750 image
 
-setwd('~/unibe/projects/EnSRF/r/src')
+setwd('~/unibe/projects/EnSRF/src')
 source('EnSRF_functions.R')
 #source('r_functions_joerg.r')
 

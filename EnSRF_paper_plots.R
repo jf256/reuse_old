@@ -58,7 +58,7 @@ if (drought_1790) {
   eyr=2004
 }
 
-setwd('~/unibe/projects/EnSRF/r/src')
+setwd('~/unibe/projects/EnSRF/src')
 source('EnSRF_functions.R')
 #source('r_functions_joerg.r')
 
@@ -4170,7 +4170,7 @@ anomper=(1901:1980)
 #eind.allts$names
 
 # NAO
-data <- plot_pages(wl=wlen,reg=which(eind.allts$names=='NAO.calc'),seas='win',anomper=(1901:1980),lw=2,sca=T,xa='s',yl='',plotbem=F,plotmem=F,title='NAO')
+data <- plot_pages(wl=wlen,reg=which(eind.allts$names=='NAO.calc'),seas='win',anomper=(1901:1980),lw=2,sca=T,xa='s',yl='',plotbem=F,plotmem=F,plotech=F,plotts=c(1,300),title='NAO')
 #abline(v=vf,col='black',lty=2)
 naols <- nao_lut_seas[nao_lut_seas[,2]=="wi",] # seas. averages until 1659
 naols <- ts(naols[naols[,1]>=1600,3],start=1600)
@@ -4196,27 +4196,29 @@ if (wlen > 1) { vdata <- runmean(vdata,wlen) }
 lines(vdata[,1],ty='l',lwd=linew,lty=1,col=rgb(0,0,10,7,maxColorValue=10), ylab="",xlab="")
 lines(vdata[,2],ty='l',lwd=linew,lty=1,col=rgb(10,0,10,7,maxColorValue=10), ylab="",xlab="")
 lines(vdata[,3],ty='l',lwd=linew,lty=1,col=rgb(0,10,10,7,maxColorValue=10), ylab="",xlab="")
-pos <- which(data[['period']]>1602 & data[['period']]<2001)
-ecormean <- round(cor(data[['allind']][pos,1],window(vdata,1603,2000),
+pos <- which(data[['period']]>1602 & data[['period']]<1901)
+ecormean <- round(cor(data[['allind']][pos,1],window(vdata,1603,1900),
                       use="pairwise.complete.obs"),digits=2) 
-acormean <- round(cor(data[['allind']][pos,2],window(vdata,1603,2000),
+acormean <- round(cor(data[['allind']][pos,2],window(vdata,1603,1900),
                       use="pairwise.complete.obs"),digits=2) 
 
 #ecorbem <- round(cor(data[['allind']][seq(298,402),3],vdata[seq(1,105),],use="pairwise.complete.obs"),digits=2) 
 #acorbem <- round(cor(data[['allind']][seq(298,402),4],vdata[seq(1,105),],use="pairwise.complete.obs"),digits=2)
-legend('topleft', c('CCC400','EKF400','Luterbacher','Trouet','Cook'),
-       lty=rep(1,6),lwd=c(2,2,1,1,1,1),
-       col=c(rgb(0,0,0,10,maxColorValue=10),rgb(10,0,0,10,maxColorValue=10),
+legend('topleft', c('EKF400','Luterbacher','Trouet','Cook'),
+       lty=rep(1,5),lwd=c(2,1,1,1,1),
+       col=c(rgb(10,0,0,10,maxColorValue=10),
              rgb(0,0,10,10,maxColorValue=10),rgb(10,0,10,10,maxColorValue=10),
              rgb(0,10,10,10,maxColorValue=10)),
        cex=fs, bty='o', bg='white', box.col='white')
-legend('bottomleft',c(paste('ECHAM ens. mean - Lut., Trou., Cook:',ecormean[1],ecormean[2],ecormean[3]),
-       paste('Analysis ens. mean - Lut., Trou., Cook:',acormean[1],acormean[2],acormean[3])),
+legend('bottomleft',c(paste('CCC400 ens. mean - Lut., Trou., Cook:',
+       ecormean[1],ecormean[2],ecormean[3]),
+       paste('EKF400 ens. mean - Lut., Trou., Cook:',acormean[1],acormean[2],acormean[3])),
        cex=fs, bty='o', bg='white', box.col='white')
 #,paste('ECHAM ens. bem - 20CR, REC, NCEP, ERA40:',ecorbem[1],ecorbem[2],ecorbem[3],ecorbem[4]),paste('Analysis ens. bem - 20CR, REC, NCEP, ERA40:',acorbem[1],acorbem[2],acorbem[3],acorbem[4]))
 
 data <- plot_pages(wl=wlen,reg=which(eind.allts$names=='NAO.calc'),seas='win',anomper=(1901:1980),
-                   lw=2,sca=T,xa='s',yl='',plotbem=F,plotmem=F,plotts=c(299,402),title='NAO 20th century')
+                   lw=2,sca=T,xa='s',yl='',plotbem=F,plotmem=F,plotech=F,
+                   plotts=c(299,402),title='NAO 20th century')
 lines(vdata[,4],ty='l',lwd=linew,lty=1,col=rgb(0,0,10,7,maxColorValue=10), ylab="",xlab="")
 lines(vdata[,5],ty='l',lwd=linew,lty=1,col=rgb(10,0,10,7,maxColorValue=10), ylab="",xlab="")
 lines(vdata[,6],ty='l',lwd=linew,lty=1,col=rgb(10,5,0,7,maxColorValue=10), ylab="",xlab="")
@@ -4226,22 +4228,22 @@ ecormean <- round(cor(data[['allind']][pos,1],window(vdata,1901,2000),
                       use="pairwise.complete.obs"),digits=2) 
 acormean <- round(cor(data[['allind']][pos,2],window(vdata,1901,2000),
                       use="pairwise.complete.obs"),digits=2) 
-legend('topleft', c('CCC400','EKF400','20CR','REC','NCEP','ERA40'),
-       lty=rep(1,6),lwd=c(2,2,1,1,1,1),
-       col=c(rgb(0,0,0,10,maxColorValue=10),rgb(10,0,0,10,maxColorValue=10),
+legend('topleft', c('EKF400','20CR','REC','NCEP','ERA40'),
+       lty=rep(1,5),lwd=c(2,1,1,1,1),
+       col=c(rgb(10,0,0,10,maxColorValue=10),
              rgb(0,0,10,10,maxColorValue=10),rgb(10,0,10,10,maxColorValue=10),
              rgb(10,5,0,10,maxColorValue=10),rgb(0,10,10,10,maxColorValue=10)),
        cex=fs, bty='o', bg='white', box.col='white')
 legend('bottomleft', 
-  c(paste('ECHAM ens. mean - 20CR, REC, NCEP, ERA40:',ecormean[4],ecormean[5],ecormean[6],ecormean[7]),
-  paste('Analysis ens. mean - 20CR, REC, NCEP, ERA40:',acormean[4],acormean[5],acormean[6],acormean[7])),
+  c(paste('CCC400 ens. mean - 20CR, REC, NCEP, ERA40:',ecormean[4],ecormean[5],ecormean[6],ecormean[7]),
+  paste('EKF400 ens. mean - 20CR, REC, NCEP, ERA40:',acormean[4],acormean[5],acormean[6],acormean[7])),
   cex=fs, bty='o', bg='white', box.col='white')
 #  paste('ECHAM ens. bem - 20CR, REC, NCEP, ERA40:',ecorbem[4],ecorbem[5],ecorbem[3],ecorbem[6]),
 #  paste('Analysis ens. bem - 20CR, REC, NCEP, ERA40:',acorbem[4],acorbem[5],acorbem[6],acorbem[7])
 
 
 # PNA
-data <- plot_pages(wl=wlen,reg=which(eind.allts$names=='PNA.calc'),seas='win',anomper=(1901:1980),lw=2,sca=T,xa='s',yl='',plotbem=F,plotmem=F,title='PNA')
+data <- plot_pages(wl=wlen,reg=which(eind.allts$names=='PNA.calc'),seas='win',anomper=(1901:1980),lw=2,sca=T,xa='s',yl='',plotbem=F,plotmem=F,plotech=F,title='PNA')
 #abline(v=vf,col='black',lty=2)
 vdata <- cbind(stefind['PNA_20C'],stefind['PNA_REC'],stefind['PNA_NCEP'],stefind['PNA_ERA-40'])
 yrv <- stefind[,1]
@@ -4272,14 +4274,14 @@ acormean[5] <- round(cor(data[['allind']][pos2,2],window(vdata[,5],1725,2000),
                       use="pairwise.complete.obs"),digits=2) 
 #ecorbem <- round(cor(data[['allind']][seq(298,402),3],vdata[seq(1,105),],use="pairwise.complete.obs"),digits=2) 
 #acorbem <- round(cor(data[['allind']][seq(298,402),4],vdata[seq(1,105),],use="pairwise.complete.obs"),digits=2)
-legend('bottomleft', c(paste('ECHAM ens. mean - 20CR, REC, NCEP, ERA40, Trouet:',
-  ecormean[1],ecormean[2],ecormean[3],ecormean[4],ecormean[5]),paste('Analysis ens. mean - 20CR, REC, NCEP, ERA40, Trouet:',
+legend('bottomleft', c(paste('CCC400 ens. mean - 20CR, REC, NCEP, ERA40, Trouet:',
+  ecormean[1],ecormean[2],ecormean[3],ecormean[4],ecormean[5]),paste('EKF400 ens. mean - 20CR, REC, NCEP, ERA40, Trouet:',
   acormean[1],acormean[2],acormean[3],acormean[4],acormean[5])),cex=fs, bty='o', bg='white', box.col='white')
 # ,paste('ECHAM ens. bem - 20CR, REC, NCEP, ERA40:',ecorbem[1],ecorbem[2],ecorbem[3],ecorbem[4]),
 # paste('Analysis ens. bem - 20CR, REC, NCEP, ERA40:',acorbem[1],acorbem[2],acorbem[3],acorbem[4]))
-legend('topleft', c('CCC400','EKF400','20CR','REC','NCEP','ERA40','Trouet'),
-       lty=rep(1,7),lwd=c(2,2,1,1,1,1,1),
-       col=c(rgb(0,0,0,10,maxColorValue=10),rgb(10,0,0,10,maxColorValue=10),
+legend('topleft', c('EKF400','20CR','REC','NCEP','ERA40','Trouet'),
+       lty=rep(1,6),lwd=c(2,1,1,1,1,1),
+       col=c(rgb(10,0,0,10,maxColorValue=10),
              rgb(0,0,10,10,maxColorValue=10),rgb(10,0,10,10,maxColorValue=10),
              rgb(10,5,0,10,maxColorValue=10),rgb(0,10,10,10,maxColorValue=10),
              rgb(0,10,0,10,maxColorValue=10)),
@@ -5026,6 +5028,8 @@ if (warmcold_decades) {
 
 
 if (plots1816) {
+  # check yuri's 1816 data compilation
+  #load("../comparison_data/yuri_1816_all_station_and_travel_pressure_data.Rdata")
   syr=1816     
   eyr=1817
   
@@ -5046,37 +5050,10 @@ if (plots1816) {
   # European T, P and SLP comparison year 1816
   cyr = 1816
   load(file=paste0(prepplotpath,'analysis_',cyr,'.Rdata'))
-  echam.abs <- echam
-  analysis.abs <- analysis
-  bemlist <- read.table(file='../data/bem/bem.txt',header=F)
-  bem <- bemlist[which(bemlist[,1]==cyr),2]
-  echam.abs$bem <- echam.abs$data[,,bem]
-  echam.anom$bem <- echam.anom$data[,,bem]
-  analysis.abs$bem <- analysis.abs$data[,,bem]
-  analysis.anom$bem <- analysis.anom$data[,,bem]
-  ech_ind$bem <- ech_ind$data[,,bem]
-  ana_ind$bem <- ana_ind$data[,,bem]
-    
-  atmp <- analysis.anom$ensmean
-  etmp <- echam.anom$ensmean
-  a2tmp <- analysis.abs$ensmean
-  e2tmp <- echam.abs$ensmean
-  a3tmp <- analysis.anom$bem
-  e3tmp <- echam.anom$bem
-  vtmp <- validate$data
-  c=1
-
-  anameananom <- atmp/c
-  echmeananom <- etmp/c
-  eadiff <- anameananom-echmeananom
-  anameanabs <- a2tmp/c
-  echmeanabs <- e2tmp/c
-  eadiffabs <- anameanabs-echmeanabs
-  anameananombem <- a3tmp/c
-  echmeananombem <- e3tmp/c
-  eadiffbem <- anameananombem-echmeananombem
-  valmean <- vtmp/c
-  valmeananom <- valmean-valclim
+  validate.anom <- echam
+  validate.anom$data <- echam$ensmean
+  validate.anom$data[(1:nrow(validate$data)),] <- validate$data-valclim
+  validate.anom$data[(nrow(validate$data)+1):nrow(echam$data),] <- NA
   
   pnames <- paste(c('a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k'), ')', sep='')
   data.dim <- dim(echam$data)[c(1,2,2,3)]
@@ -5090,8 +5067,41 @@ if (plots1816) {
                   data=matrix(c(rep(1,nrow(pcoor)),rep(2,nrow(scoor))),ncol=1))
   
   # make plots
-  t=2 # summer season as we look at year without a summer
-  plotdata=echam
+  tim=2 # summer season as we look at year without a summer
+  pdata=echam
+  pdata$lon <- pdata$lon[1:dim(validate.anom)[1]]
+  pdata$lat <- pdata$lat[1:dim(validate.anom)[1]]
+  pdata$names <- pdata$names[1:dim(validate.anom)[1]]
+  pdf('../figures/nat_data_paper/eu_1816.pdf', width=9, height=9, paper='special')
+    layout(matrix(c(1,2,3,4,4,4,5,6,7,8,8,8), 4, 3, byrow = TRUE), height=c(3,1,3,1))
+    #  layout(matrix(c(1,2,3,3), 2, 2, byrow = TRUE), height=c(3,1))
+    par(oma=c(2,4,4,0))
+    levs <- c(-Inf, seq(-1.75,1.75,0.5), Inf)
+    contlevs <- seq(-2,2,0.5)
+    pdata$data <- array(c(echam.anom$ensmean[,tim],analysis.anom$ensmean[,tim],
+                      validate.anom$data[,tim]), 
+                      c(nrow(validate.anom$data),1,3))
+    plot_echam3(pdata, varname='temp2', type='data', cex.pt=5.2, lonlim=c(-20,40),
+             latlim=c(30,75), wcol='darkgrey',
+             lev=levs, st.col=NULL, stations=calibrate, names=c('a)', 'b)','c)'),
+             colnames=c("CCC400 anomaly","EKF400 anomaly","Reconstruction anomaly"),
+             statpanel=2, add=T, rownames='Temperature and SLP', main='1816', #no ghp in vali data
+             addcontours=T, contvarname='slp',conttype='data',contcol='black',
+             contlev=contlevs)
+    scfac <- max(echam.anom$ensmean[echam$names=='u200'])
+    levs <- c(-Inf, seq(-9,9,2), Inf)
+    plot_echam3(pdata, varname='precip', type='data', cex.pt=5.2, lonlim=c(-20,40),
+             latlim=c(30,75), wcol='darkgrey',
+             lev=levs, st.col=NULL, stations=NULL, names=c('d)', 'e)','f)'),
+             colnames='',
+             statpanel=NULL, add=T, rownames='Precipitation and 850hPa wind', main='',
+             addvectors=T, vecnames=c('u850','v850'), veccol='black', 
+             veclen=scfac*0.01, vecscale=scfac*0.9, vecwd=0.95, every_x_vec=1,
+             colorbar=T)
+  dev.off()
+  
+  
+  
   #  plotdata$data <- array(c(echmeananom[,t],anameananom[,t],eadiff[,t],valmeananom[,t]), c(nrow(echmeananom),1,4))
   #plotdata$data <- array(c(anameananom[,t],valmeananom[,t]), c(nrow(echmeananom),1,2))
 #  plotdata$data <- array(c(anameananom[,t],anameananombem[,t],valmeananom[,t]), c(nrow(echmeananom),1,3))  
@@ -5446,6 +5456,21 @@ dev.off()
   
   
 } # end 1816 plots 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -7510,3 +7535,11 @@ if (landusebugbias){
   # result: bias does not improve with assimilation because I only work with anomalies 
   # and add the climatology back on
 }
+
+
+
+
+
+
+
+
