@@ -1,122 +1,13 @@
 #MAJOR PROBLEMS:
 # SLOW!!!
 rm(list=ls())
-
-# JONAS IDEEN:
-# instr. mitteln, aber fehler nicht reduzieren
-# proxies und instr. assimilieren damit wenn einzelne monate NAs haben immnernoch proxy infos eingehen
+source('EnSRF_switches.R')
+source('EnSRF_functions.R')
 
 syr=1902     # set to 1603 to process analysis; set to >=1901 or 1902? for cru validation
-#syr2=syr+1
 eyr=2001     # max 2004 ?
 
-save_prepplot=F # save half year averages calc from monthly data into /prepplot folder
-load_prepplot=T # ATTENTION check if folder prepplot on scratch contains monthly or seasonal data!
-
-load_image=T # directly load image for syr-eyr period: 1902-2001 or 1651-1750 image
-
-setwd('~/unibe/projects/EnSRF/src')
-source('EnSRF_functions.R')
-#source('r_functions_joerg.r')
-
-# switches and options
-#prepplotdir='../data/prepplot'
-#prepplotdir='/Volumes/DATA/climdata/ENSRF_analysis/prepplot_monthly'
-prepplotdir='/Volumes/DATA/climdata/ENSRF_analysis/prepplot_v3_seasonal/'
-#datadir='~/Documents/climdata/'
-#datadir='/scratch/joerg/climdata'
-datadir='/Volumes/DATA/climdata/'
-
-sixmonstatevector=T    # 6 months of data in state vector for real proxy multiple 
-# regression approach. ATTENTION: monthly has to be TRUE
-if (sixmonstatevector) {
-  s <- 2 # only 2 seasons to calculate but still monthly results in long state vector
-} else {
-  s <- 12
-}
-monthly_out=F          # if sixmonstatevector=T and monthly_out+F, output is transformed 
-                       # to seasonal average or monthly data if monthly_out=T 
-write_coor=F           # write ascii files with assimilated stations and data per ts
-write_netcdf=F         # write assimilation result to NetCDF files
-season=c(3,9)          # 3,9 = apr-sep and oct-mar, num=end month of season
-# season=c(2,5,8,11)
-# distances estimated from echam decorrelation excercise
-calc_decorr_dist=F     # calculate decorrelation distance for each variable to set L
-
-nmem=30
-first_prox_per_grid=F  # first proxy per echam grid box ATTENTION: only this 
-# or second next option (avg_prox_per_grid) can be TRUE
-firstproxres=10       # grid resolution for instr. stations (5 = echamgrid/5)
-avg_prox_per_grid=T    # average more than one proxy per echam grid box 
-# and calc proxy vs echam correlation
-reduced_proxies=F      # use every ??th (see code below) proxy record
-every2grid=T           # only use every third grid cell of ECHAM, CRU validation, ...
-land_only=T            # calc on land only
-fasttest=F             # use even less data
-tps_only=F             # only use temp, precip and slp in state vector, remove other vars
-no_stream=T           # all echam vars but stream function as there is problem with 5/9 levels
-# which are in lat dimension
-ind_ECHAM=T            # add ECHAM indices to state vector
-load_71yr_anom=T       # load 71yr echam anomalies calculated with cdo
-anom_reload=F          # anom first calculated in R
-anom_save=F            # save anom calculated in R to reload next time
-if (load_71yr_anom==T) {
-  anom_reload=F
-  anom_save=F}
-check_assimdata=T      # screen assimilation data before using it
-
-if (no_stream & tps_only) {
-  tps_only = F
-  print('ACHTUNG: tps_only was set to FALSE')
-}
-
-# choose data (only 1 of the following options must be TRUE!!!)
-if (eyr > 1659) {
-  instrumental=T        # all instrumental stations
-} else {
-  instrumental=F
-}
-if (syr < 1960) {
-  real_proxies=T         # Proxy data experiment (regression NOT H operator)
-} else {
-  real_proxies=F
-}
-if (syr > 1853) {
-  docu=F                 # read documentary based data
-} else {
-  docu=T
-}
-#print(paste("instr:",instrumental, "proxies:",real_proxies, "documentary:",docu))
-
-# other options
-scaleprox=T            # scale standardized docu and prox data the echam variance at location
-anomaly_assim=T        # work with anomalies to avoid reg. konst in state vector
-shortanom=F # all just 1950-70 because no other data on 2nd_grid to test
-nseas <- 12 # year with 12 months
-#subbias=F              # TO BE USED WITH INSTRUMENTAL DATA !!!
-# substract bias from instrumental data to get close to model data
-# to avoid problems with correlation between vars of different units
-subbias_vali=T         # also debias cru/ncep validation data 
-check_dist=F           # test for ideal cut-off distance of spatial correlations
-#H_non_lin=F           # new H operator that also allows non-linear functions
-twcr_vali=F            # 20CR reanalysis data for validation
-ncep_vali=F            # NCEP/NCAR reanalysis data for validation
-
-ana.enssize=F
-NCEP_SOCOL=F
-
-
-
-
-
-
-
-
-
-
-
-
-
+#####################################################################################
 if (!load_image){
 
 ptm1 <- proc.time()

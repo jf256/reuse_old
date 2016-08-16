@@ -5,21 +5,15 @@
 # plot_echam(bias$'Localized analysis', varname='temp2', type='ensmean', cex.pt=2, ti=1)
 # plot_echam(echam.anom, varname='temp2', type='ensmean', cex.pt=2, ti=1)
 
-# switches
-#rm(list=ls())
-setwd('~/unibe/projects/EnSRF/src')
+figpath=paste0('../figures/',format(Sys.time(), "%Y%m%d_%H-%M_"),syr,'-',eyr,'/')
+dir.create(figpath)
 
-#real_proxies=F
-monthly=F
-#sixmonstatevector=F
-pseudoproxy=F
-plot_dweights=F
-write_nc=F
-recalc <- F
-reload <- F
-plstat <- NULL #calibrate # NULL or calibrate
-#PAGES <- F          # write output for PAGES paper
+pnames <- paste(c('a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k'), ')', sep='')
+data.dim <- dim(echam$data)[c(1,2,2,3)]
+data.dim[2:3] <- c(s,data.dim[3]/s)
+ens.dim <- c(nrow(echam$ensmean), s, ncol(echam$ensmean)/s)
 
+#####################################################################################
 #if (recalc){
 #  source('EnSRF_data.R')
 #  source('EnSRF_prepplots.R')
@@ -52,14 +46,7 @@ if ((monthly)&(sixmonstatevector)&(monthly_out)) {
   RE$ensmean <- RE$ensmean[,c(4,10)]
 }  
 
-figpath=paste0('../figures/',format(Sys.time(), "%Y%m%d_%H-%M_"),syr,'-',eyr,'/')
-dir.create(figpath)
 
-#source('EnSRF_functions.R')
-pnames <- paste(c('a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k'), ')', sep='')
-data.dim <- dim(echam$data)[c(1,2,2,3)]
-data.dim[2:3] <- c(s,data.dim[3]/s)
-ens.dim <- c(nrow(echam$ensmean), s, ncol(echam$ensmean)/s)
 
 ################################################################################
 # plot example year anomalies

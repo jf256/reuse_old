@@ -8,6 +8,11 @@
 # [42,] 1644     0   30   164   35  129
 # [43,] 1645     0   30   164   35  129
 
+# why do mxd input data drop around 1650?
+
+# JONAS IDEEN:
+# instr. mitteln, aber fehler nicht reduzieren
+# proxies und instr. assimilieren damit wenn einzelne monate NAs haben immnernoch proxy infos eingehen
 
 # current code in R only without Fortran!!!
 # ATTENTION: to use the faster fortran EnSRF routine execute on the command line:
@@ -15,244 +20,51 @@
 # R --arch=x86_64 CMD SHLIB EnSRF.f95 # to compile EnSRF.f95 on 64bit MAC
 
 rm(list=ls())
-setwd('~/unibe/projects/EnSRF/src')
+source('EnSRF_switches.R')
 source('EnSRF_functions.R')
-#source('r_functions_joerg.r')
-
-# switches and options
-machine="macbook" #"climcal3" # "climpa12" # 
-if (machine=="macbook") {
-  datadir="/Volumes/DATA/climdata/"
-} else {
-  datadir="/scratch/joerg/climdata/"
-}
-
-syr=1600 #1602               # startyear
-  syr2=syr+1
-eyr=2005 #1620               # endyear
-
-#!!!ATTENTION: sixmonstatevector year starts in October of previous year (cyr-1)
-sixmonstatevector=T    # 6 months of data in state vector for real proxy multiple 
-                       # regression approach. ATTENTION: monthly has to be TRUE
-if (sixmonstatevector) {
-  s <- 2 # only 2 seasons to calculate but still monthly results in long state vector
-} else {
-  s <- 12
-}
-monthly_out=F          # if sixmonstatevector=T output is backtransformed to seasonal 
-                       # average or monthly data if monthly_out=T 
-write_coor=T           # write ascii files with assimilated stations and data per ts
-season=c(3,9)          # 3,9 = apr-sep and oct-mar, num=end month of season
-                       # season=c(2,5,8,11)
-# distances estimated from echam decorrelation excercise
-calc_decorr_dist=F     # calculate decorrelation distance for each variable to set L
-# stefans recommendation: increase distance, give proxies more weight and instr. less weight
-l_dist_temp2=1000*1.5 # factor *1.5 after stefans recommendation
-l_dist_slp=1800*1.5
-l_dist_precip=300*1.5
-l_dist_gph500=1800*1.5
-l_dist_gph100=2500*1.5
-l_dist_u850=1200*1.5
-l_dist_u200=1200*1.5
-l_dist_v850=1000*1.5
-l_dist_v200=1000*1.5
-l_dist_omega500=300*1.5
-l_dist_t500=1000*1.5
-l_dist_ind=999999
-
-nmem=30
-first_prox_per_grid=F  # first proxy per echam grid box ATTENTION: only this 
-                       # or second next option (avg_prox_per_grid) can be TRUE
-  firstproxres=10      # grid resolution for instr. stations (5 = echamgrid/5)
-avg_prox_per_grid=T    # average more than one proxy per echam grid box 
-                       # and calc proxy vs echam correlation
-reduced_proxies=F      # use every ??th (see code below) proxy record
-every2grid=T           # only use every third grid cell of ECHAM, CRU validation, ...
-land_only=F            # calc on land only
-fasttest=F             # use even less data
-tps_only=F             # only use temp, precip and slp in state vector, remove other vars
- no_stream=T           # all echam vars but stream function as there is problem with 5/9 levels
-                       # which are in lat dimension
-ind_ECHAM=T            # add ECHAM indices to state vector
-load_71yr_anom=T       # load 71yr echam anomalies calculated with cdo
-anom_reload=F          # anom first calculated in R
-anom_save=F            # save anom calculated in R to reload next time
-if (load_71yr_anom==T) {
-  anom_reload=F
-  anom_save=F}
-check_assimdata=T      # screen assimilation data before using it
-
-if (no_stream & tps_only) {
-  tps_only = F
-  print('ACHTUNG: tps_only was set to FALSE')
-}
-
-# load or generate data from scratch
-generate_ECHAM_1901_70=F # ECHAM data for bias calc with petra's real_prox trw data 
-generate_ECHAM=F       # if TRUE -> orig. echam data is read
-                       # if FALSE -> echam_syr-eyr.Rdata
-generate_ECHAM_103=F   # ECHAM ens. mem. 103 with corrected land use forcing
-generate_ECHAM_anom=F  # read echam anom, clim and sd from cdo
-# ATTENTION if echam=T the proxy/instr. data have to be generated, too
-generate_NCEP=F        # generate NCEP/NCAR reanalysis for independent verification
-# next line not included yet: 
-generate_20CR=F        # generate 20CR reanalysis for independent verification
-#if ((syr > 1900) & (eyr < 2005)) {
-# generate_CRUALLVAR=T  # if TRUE -> read CRUTEM3 temp, TS3 precip and 
-#} else {               # HADSLP2 gridded instrumentals
-generate_CRUALLVAR=F   # if FALSE -> cru_allvar.Rdata 
-generate_HadCRU4=F     # HadCRU ens. SD for instr. uncertainty and error-spread ratio
-#}
-if ((syr < 1901) & (eyr > 1749)) {
- generate_LUTPAULKUT=T # if TRUE -> read Luterbacher, Pauling, 
-} else {               # Kuettel's temp. precip. and SLP 
- generate_LUTPAULKUT=F # gridded seasonal recons (1750-1999)
-} 
-generate_ind_ECHAM=T   # gen echam indices
-if (syr > 1900) {
- generate_ind_recon=T   # gen recon indices
-} else {
- generate_ind_recon=F
-} 
-# use scripts in data_yuri to generate .Rdata files 
-generate_t_yuri=F      # if TRUE -> yuri's temp. data collection is read
-generate_slp_yuri=F    # if TRUE -> yuri's slp data collection is read
-generate_GHCN=F        # if TRUE -> orig. GHCN stat. data is read; 
-generate_GHCN_precip=F # if FALSE -> ghcn.Rdata 
-#generate_HISTALP=F     # histalp temp. is already in yuri's collection 
-if (syr < 1960) {
- generate_PROXIES=T     # if FALSE -> real_proxies.Rdata
-} else {
- generate_PROXIES=F
-} 
-  trw_only=F           # Petra's TRW only
-  mxd_only=F           # Use only MXD tree ring proxies, NOT Petra's TRW
-  schweingr_only=F     # Use Schweingruber MXD grid only
-generate_DOCU=F        # if TRUE -> yuri's docu. data collection is read 
-
-# choose data (only 1 of the following options must be TRUE!!!)
-if (eyr > 1659) {
- instrumental=T        # all instrumental stations
-} else {
- instrumental=F
-}
-  yuri_temp=T          # yuri's data compilation, SLP always loaded
-  yuri_slp=T
-  ghcn_temp=T
-  ghcn_prec=F
-#inst_at_proxy=F        # only few instrumental stations close to proxy sites
-#inst_at_proxy_noise=F  # only few instrumental stations close to proxy sites + noise
-if (syr < 1960) {
- real_proxies=T         # Proxy data experiment (regression NOT H operator)
-} else {
- real_proxies=F
-}
-if (syr > 1853) {
- docu=F                 # read documentary based data
-} else {
- docu=T
-}
-print(paste("instr:",instrumental, "proxies:",real_proxies, "documentary:",docu))
-
-# other options
-scaleprox=T            # scale standardized docu and prox data the echam variance at location
-anomaly_assim=T        # work with anomalies to avoid reg. konst in state vector
- shortanom=F # all just 1950-70 because no other data on 2nd_grid to test
- nseas <- 12 # year with 12 months
-#subbias=F              # TO BE USED WITH INSTRUMENTAL DATA !!!
-                       # substract bias from instrumental data to get close to model data
-                       # to avoid problems with correlation between vars of different units
-subbias_vali=T         # also debias cru/ncep validation data 
-check_dist=F           # test for ideal cut-off distance of spatial correlations
-#H_non_lin=F           # new H operator that also allows non-linear functions
-
-# choose validation data set
-# ONLY one can be TRUE
-# next line not included yet: 
-if (eyr < 1750) {
- vali=F                 # switch off prepplot if no vali data selected
-} else {
- vali=T
-}
-twcr_vali=F            # 20CR reanalysis data for validation
-ncep_vali=F            # NCEP/NCAR reanalysis data for validation
-if ((syr > 1900) & (eyr<2006)) {
-  cru_vali=T             # monthly CRU TS3 temp, precip and HADSLP2 gridded instrumentals (1901-2004)
-  ind_recon=T            # Stefan's reconstructed indices until 1948 and NCAR reanalysis later added to CRU and NCEP
-} else {
-  cru_vali=F 
-  ind_recon=F
-}
-if ((syr < 1901) & (eyr > 1749)) {
- recon_vali=T           # seasonal luterbacher, pauling, kuettel recons (1750-1999)
-} else {
- recon_vali=F
-}
-# if (eyr<1750) {
-#   generate_LUTPAULKUT=F
-#   recon_vali=F
-#   vali=F
-#   print("SET LUTPAULKUT AND VALI TO FALSE BECAUSE EYR < 1750!!!")
-# }
-
-# -----------------------------------------------------------------------------------------
-
-
-
-
+syr=1600; syr2=syr+1  # startyear e.g. 1602
+eyr=2005              # endyear e.g. 1620
 
 ##########################################################################################
 # start loading data  
 ##########################################################################################  
+if (generate_ECHAM){
+  print("generate_ECHAM")
+  # create ECHAM .RData from .nc
+  read_echam4('EnSRF', timlim=c(syr,eyr), small=every2grid, landonly=land_only)
+} 
+
+if (generate_ECHAM_anom){
+  # read echam 70yr anom, clim and sd calculated with cdo from .nc files to .RData
+  print("generate_ECHAM_anom")
+  read_echam4('ano', path=echanompath, timlim=c(1601,2005), small=every2grid, 
+              landonly=land_only, anom=T)
+  read_echam4('EnSRF', path=echclimpath, timlim=c(1635,1970), small=every2grid, 
+              landonly=land_only, clim=T)
+  read_echam4('EnSRF', path=echsdpath, timlim=c(1601,2005), small=every2grid, 
+              landonly=land_only, std=T)
+}
+
 if (generate_ECHAM_1901_70){
   print("generate_ECHAM_1901_70")
-  # add vars to state vector to calculate clim indices
-  # always for every grid cell as just used for proxy calibration
+  # ECHAM data for bias calculation with real proxy data
   echam1901_70 <- read_echam_ensmean('EnSRF', timlim=c(1901,1970),small=F)
   save(echam1901_70, file="../data/echam_1911-70.Rdata")
 } 
 
 if (generate_ECHAM_103){
   print("generate_ECHAM ens. mem. 103")
+    # ens. member WITHOUT land surface bug
     read_echam4(filehead='EnSRF', path=paste0(datadir,'echam/echam103'), timlim=c(syr,eyr), 
                 small=every2grid, landonly=land_only)
 }  
 
-
-if (generate_ECHAM){
-  print("generate_ECHAM")
-  read_echam4('EnSRF', timlim=c(syr,eyr), small=every2grid, landonly=land_only)
-} 
-
-
-if (generate_ECHAM_anom){
-  # read echam 70yr anom, clim and sd
-  print("generate_ECHAM")
-  read_echam4('ano', path=echanompath, timlim=c(1601,2005), small=every2grid, landonly=land_only, anom=T)
-  read_echam4('EnSRF', path=echclimpath, timlim=c(1635,1970), small=every2grid, landonly=land_only, clim=T)
-  read_echam4('EnSRF', path=echsdpath, timlim=c(1601,2005), small=every2grid, landonly=land_only, std=T)
-#
-#
-}
-  
-  
-if (generate_ind_ECHAM) {
-  print("generate_ind_ECHAM")
-  if ((shortanom==F) & (anomaly_assim==T)) {
-    echind <- read_echam1('EnSRF',timlim=c((syr-35),(eyr+35)), path=echindpath,small=F) # small has to be FALSE
-    save(echind, file=paste("../data/indices_echam_",syr,"-",eyr,".Rdata",sep=""))
-  } else {
-    echind <- read_echam1('EnSRF',timlim=c(syr,eyr), path=echindpath,small=F) # small has to be FALSE
-    save(echind, file=paste("../data/indices_echam_",syr,"-",eyr,".Rdata",sep=""))
-  }
-}
-
 if (generate_ind_recon){
+  # read Broennimann et al. 2009 atm. indices from .txt to .Rdata for comparison
   if (syr<1901){syr_ind=1901} else {syr_ind=syr}
   if (eyr>2004){eyr_ind=2004} else {eyr_ind=eyr}
   ind=read.table(file=paste(datadir,'/indices/stefan/stefan_monthly_indices.txt'
-                            ,sep=''),header=T)
-  # HC HCL SJ SJLAND Z300 Z100 DIMI NAO PNA PWC
+                            ,sep=''),header=T)   
   ind_rec_dimi = window(ts(c(rep(NA,length(ind[,colnames(ind) == 'Z100'])),rep(NA,132)),
                            start=ind[1,colnames(ind) == 'yr'],freq=12),syr_ind,c(eyr_ind,12))
   ind_rec_z100 = window(ts(ind[,colnames(ind) == 'Z100'],start=ind[1, 
@@ -267,255 +79,68 @@ if (generate_ind_recon){
                            colnames(ind) == 'yr'],freq=12),syr_ind,c(eyr_ind,12))
   indall = t(cbind(ind_rec_dimi, ind_rec_z100, ind_rec_z300, ind_rec_pwc, ind_rec_hc, 
                   ind_rec_sj))
-  save(indall, file=paste("../data/indices_recon_",syr,"-",eyr,".Rdata",sep=""))
+  save(indall, file=paste("../data/indices/indices_recon_",syr,"-",eyr,".Rdata",sep=""))
 }
 
-if (generate_NCEP){
+if (generate_NCEP) {
   print("generate_NCEP")
-  if ((!eyr<1948) & (!syr>2009)){
+  if ((!eyr<1948) & (!syr>2009)) {
     if (syr<1948){syr_ncep=1948} else {syr_ncep=syr}
     if (eyr>2009){eyr_ncep=2009} else {eyr_ncep=eyr}
     #  see script in EnSRF/script/merge_ncep.sh for regridding and co of orig. ncep data set
     ncepall <- read_echam1('ncep_allvar_1948-2009',timlim=c(syr_ncep,eyr_ncep),
                             path=nceppath,small=every2grid)
-#     ncepall0 <- read_echam1('ncep_allvar_1948-2009',timlim=c(syr_ncep,eyr_ncep),
-#                            path=nceppath,small=every2grid)
-#     if (ind_recon){
-#       ind=read.table(file=paste(datadir,'/indices/stefan/stefan_monthly_indices.txt'
-#                                 ,sep=''),header=T)
-#       # HC HCL SJ SJLAND Z300 Z100 DIMI NAO PNA PWC
-#       ind_rec_dimi = window(ts(c(rep(NA,length(ind[,colnames(ind) == 'Z100'])),rep(NA,132)),
-#                       start=ind[1,colnames(ind) == 'yr'],freq=12),syr_ncep,c(eyr_ncep,12))
-#       ind_rec_z100 = window(ts(ind[,colnames(ind) == 'Z100'],start=ind[1, 
-#                       colnames(ind) == 'yr'],freq=12),syr_ncep,freq=12,c(eyr_ncep,12))
-#       ind_rec_z300 = window(ts(ind[,colnames(ind) == 'Z300'],start=ind[1,
-#                       colnames(ind) == 'yr'],freq=12),syr_ncep,c(eyr_ncep,12))
-#       ind_rec_pwc = window(ts(ind[,colnames(ind) == 'PWC'],start=ind[1,
-#                       colnames(ind) == 'yr'],freq=12),syr_ncep,c(eyr_ncep,12))
-#       ind_rec_hc = window(ts(ind[,colnames(ind) == 'HCL'],start=ind[1,
-#                      colnames(ind) == 'yr'],freq=12),syr_ncep,c(eyr_ncep,12))
-#       ind_rec_sj = window(ts(ind[,colnames(ind) == 'SJ'],start=ind[1,
-#                      colnames(ind) == 'yr'],freq=12),syr_ncep,c(eyr_ncep,12))
-#       indall = t(cbind(ind_rec_dimi, ind_rec_z100, ind_rec_z300, ind_rec_pwc, ind_rec_hc, 
-#                        ind_rec_sj))
-#       ncepall <- ncepall0
-#       ncepall$data <- rbind(ncepall0$data[1:dim(ncepall0$data)[1],,],indall) #,ncepall0$data[2083:2087,,])
-#       ncepall$names <- c(ncepall0$names[1:dim(ncepall0$data)[1]],rownames(indall)) 
-#       #,ncepall0$names[2083:2087])
-#       ncepall$lon <- c(ncepall$lon,rep(NA,nrow(indall))) 
-#       ncepall$lat <- c(ncepall$lat,rep(NA,nrow(indall)))
-#     } else {
-#      ncepall <- ncepall0
-#    }
-    if (subbias_vali) {
-      load(paste("../data/echam_",syr,"-",eyr,".Rdata",sep=""))
-      # cut temp precip slp
-      e_tps <- echam
-      e_tps$data <- echam$ensmean[((echam$name=="temp2")|(echam$name=="precip")|
-                                     (echam$name=="slp")),]
-      e_tps$ensmean <- e_tps$data 
-      c_tps <- ncepall
-      c_tps$data <- ncepall$data[((ncepall$name=="temp2")|(ncepall$name=="precip")|
-                                   (ncepall$name=="slp")),]
-      c_tps$ensmean <- c_tps$data 
-      # split time dim in months, calc monthly mean over time,  both for echam and cruall
-      e_c_bias <- bias_fun(c_tps,e_tps,seas=12)
-      # split time dim in months and substract echam bias
-      tmp <- array(0,c(dim(ncepall$data)[1]-dim(e_c_bias$data)[1],dim(e_c_bias$data)[2:3]))
-      e_c_bias$data <- abind(e_c_bias$data,tmp,along=1) #[2082:2087,1,1]
-      ncep_tmp <- array(ncepall$data, c(nrow(ncepall$data), 12, 
-                                      ncol(ncepall$data)/12))
-      cdim <- dim(ncepall$data)
-      ncepall$data <-  array((ncep_tmp - as.vector(e_c_bias$data)),cdim)
-      # convert 12 21 back to one dimension 252      
-    }
-    if (subbias_vali) {
-      if (every2grid){
-        save(ncepall, file=paste("../data/ncep_allvar_debias_",syr,"-",eyr,"_2ndgrid.Rdata",sep=""))
-      } else {
-        save(ncepall, file=paste("../data/ncep_allvar_debias_",syr,"-",eyr,".Rdata",sep=""))
-      }
+    if (every2grid) {
+      save(ncepall, file=paste0("../data/ncep/ncep_allvar_",syr,"-",eyr,"_2ndgrid.Rdata"))
     } else {
-      if (every2grid) {
-        save(ncepall, file=paste("../data/ncep_allvar_",syr,"-",eyr,"_2ndgrid.Rdata",sep=""))
-      } else {
-        save(ncepall, file=paste("../data/ncep_allvar_",syr,"-",eyr,".Rdata",sep=""))
-      }
+      save(ncepall, file=paste0("../data/ncep/ncep_allvar_",syr,"-",eyr,".Rdata"))
     }
   } 
 }
 
-if (generate_CRUALLVAR){
+if (generate_CRUALLVAR) {
   print("generate_CRUALLVAR")
-  if ((!eyr<1901) & (!syr>2004)){
+  if ((!eyr<1901) & (!syr>2004)) {
 #    if (syr<1901){syr_cru=1901} else {syr_cru=syr}
     syr_cru=1901
 #    if (eyr>2004){eyr_cru=2004} else {eyr_cru=eyr}
     eyr_cru=2004
 #  see script in EnSRF/script/merge_cru.sh for regridding and co of orig. cru data set
     cruall <- read_echam1('cru_allvar_abs_1901-2004.nc',timlim=c(syr_cru,eyr_cru),
-                       path=crupath,small=every2grid,landonly=land_only)
-#     cruall0 <- read_echam1('cru_allvar_abs_1901-2004.nc',timlim=c(syr_cru,eyr_cru),
-#                            path=crupath,small=every2grid,landonly=land_only)
-#     if (ind_recon){
-#       ind=read.table(file=paste(datadir,'/indices/stefan/stefan_monthly_indices.txt'
-#                                   ,sep=''),header=T)
-#     # HC HCL SJ SJLAND Z300 Z100 DIMI NAO PNA PWC
-#       ind_rec_dimi = window(ts(c(rep(NA,length(ind[,colnames(ind) == 'Z100'])),rep(NA,132)),
-#                       start=ind[1,colnames(ind) == 'yr'],freq=12),syr_cru,c(eyr_cru,12))
-#       ind_rec_z100 = window(ts(ind[,colnames(ind) == 'Z100'],start=ind[1,
-#                       colnames(ind) == 'yr'],freq=12),syr_cru,freq=12,c(eyr_cru,12))
-#       ind_rec_z300 = window(ts(ind[,colnames(ind) == 'Z300'],start=ind[1,
-#                       colnames(ind) == 'yr'],freq=12),syr_cru,c(eyr_cru,12))
-#       ind_rec_pwc = window(ts(ind[,colnames(ind) == 'PWC'],start=ind[1,
-#                       colnames(ind) == 'yr'],freq=12),syr_cru,c(eyr_cru,12))
-#       ind_rec_hc = window(ts(ind[,colnames(ind) == 'HCL'],start=ind[1,
-#                       colnames(ind) == 'yr'],freq=12),syr_cru,c(eyr_cru,12))
-#       ind_rec_sj = window(ts(ind[,colnames(ind) == 'SJ'],start=ind[1,colnames(ind) 
-#                    == 'yr'],freq=12),syr_cru,c(eyr_cru,12))
-#       indall = t(cbind(ind_rec_dimi, ind_rec_z100, ind_rec_z300, ind_rec_pwc, ind_rec_hc, 
-#                        ind_rec_sj))
-#       cruall <- cruall0
-#       cruall$data <- rbind(cruall0$data[1:dim(cruall0$data)[1],,],indall) #,cruall0$data[2083:2087,,])
-#       cruall$names <- c(cruall0$names[1:dim(cruall0$data)[1]],rownames(indall)) 
-#       cruall$lon <- c(cruall$lon,rep(NA,nrow(indall))) 
-#       cruall$lat <- c(cruall$lat,rep(NA,nrow(indall))) 
-#       #,cruall0$names[2083:2087])
-#     } else {
-#       cruall <- cruall0
-#     }
-    if (subbias_vali) {
-     if (load_71yr_anom) {
-       cruall2 <- read_echam1('cru_allvar_abs_1901-2004.nc',timlim=c(1917,1987),
-                             path=crupath,small=every2grid,landonly=land_only)
-       if (every2grid) {
-         # load 70 year climatology from ECHAM to calc bias
-         load("../data/echam_clim/echam_clim_1952-1953_2ndgrid.Rdata")
-       } else {
-         load("../data/echam_clim/echam_clim_1952-1953.Rdata")
-       }
-       echam_clim$data[echam_clim$names=='temp2',,] <- echam_clim$data[echam_clim$names=='temp2',,] - 273.15
-       echam_clim$ensmean[echam_clim$names=='temp2',] <- echam_clim$ensmean[echam_clim$names=='temp2',] - 273.15
-       echam_clim$data[echam_clim$names=='precip',,] <- echam_clim$data[echam_clim$names=='precip',,] * 3600 * 24 * 30
-       echam_clim$ensmean[echam_clim$names=='precip',] <- echam_clim$ensmean[echam_clim$names=='precip',] * 3600 * 24 * 30
-       echam_clim$data[echam_clim$names=='slp',,] <- echam_clim$data[echam_clim$names=='slp',,] / 100
-       echam_clim$ensmean[echam_clim$names=='slp',] <- echam_clim$ensmean[echam_clim$names=='slp',] / 100
-       e_tps <- echam_clim
-       e_tps$data <- echam_clim$ensmean[((echam_clim$name=="temp2")|(echam_clim$name=="precip")|
-                        (echam_clim$name=="slp")),1:12]
-       e_tps$ensmean <- e_tps$data 
-       c_tps <- cruall2
-       c_tps$data <- cruall2$data[((cruall$name=="temp2")|(cruall2$name=="precip")|
-                        (cruall2$name=="slp")),,1]
-       c_tps$ensmean <- c_tps$data
-       # split time dim in months, calc monthly mean over time,  both for echam and cruall
-       e_c_bias <- bias_fun(c_tps,e_tps,seas=12)
-       # split time dim in months and substract echam bias
-       tmp <- array(0,c(dim(cruall$data)[1]-dim(e_c_bias$data)[1],dim(e_c_bias$data)[2:3]))
-       e_c_bias$data <- abind(e_c_bias$data,tmp,along=1) #[2082:2087,1,1]
-       cru_tmp <- array(cruall$data, c(nrow(cruall$data), 12, 
-                                       ncol(cruall$data)/12))
-       cdim <- dim(cruall$data)
-         #debias <- array((cru_tmp - as.vector(e_c_bias$data)),cdim)
-       cruall$data <-  array((cru_tmp - as.vector(e_c_bias$data)),cdim)
-     } else {
-#      load(paste("../data/echam_",syr,"-",eyr,".Rdata",sep=""))
-      for (cyr in syr2:eyr) {
-        print(cyr)
-        if (every2grid) {
-          load(paste("../data/echam/echam_",(cyr-1),"-",cyr,"_2ndgrid.Rdata",sep="")) 
-        } else {
-          load(paste("../data/echam/echam_",(cyr-1),"-",cyr,".Rdata",sep=""))
-        }
-        # ACHTUNG just works if variables are in same order, not with sixmonstatevector
-        tpspos <- c(which(echam$names=='temp2'), which(echam$names=='precip'), 
-                    which(echam$names=='slp'))
-        if (cyr == syr2) {
-          echam$data <- echam$data[tpspos,,]
-          echam$ensmean <- echam$ensmean[tpspos,]
-        } else {
-          echam$data <- echam$data[tpspos,1:12,]
-          echam$ensmean <- echam$ensmean[tpspos,1:12]
-        }
-        echam$names <- echam$names[tpspos]
-        echam$lon <- echam$lon[tpspos]
-        echam$lat <- echam$lat[tpspos]
-        if (cyr == syr2) {
-          echam.allts=echam
-        } else {
-          echam.allts$data=abind(echam.allts$data,echam$data,along=2)
-          echam.allts$ensmean=cbind(echam.allts$ensmean,echam$ensmean)
-          echam.allts$time=c(echam.allts$time,echam$time)
-        }
-      }      
-      echam <- echam.allts
-      rm(echam.allts)
-      # cut temp precip slp
-      e_tps <- echam
-      e_tps$data <- echam$ensmean[((echam$name=="temp2")|(echam$name=="precip")|
-                                   (echam$name=="slp")),]
-      e_tps$ensmean <- e_tps$data 
-      c_tps <- cruall
-      c_tps$data <- cruall$data[((cruall$name=="temp2")|(cruall$name=="precip")|
-                                 (cruall$name=="slp")),,1]
-      c_tps$ensmean <- c_tps$data 
-      # split time dim in months, calc monthly mean over time,  both for echam and cruall
-      e_c_bias <- bias_fun(c_tps,e_tps,seas=12)
-      # split time dim in months and substract echam bias
-      tmp <- array(0,c(dim(cruall$data)[1]-dim(e_c_bias$data)[1],dim(e_c_bias$data)[2:3]))
-      e_c_bias$data <- abind(e_c_bias$data,tmp,along=1) #[2082:2087,1,1]
-      cru_tmp <- array(cruall$data, c(nrow(cruall$data), 12, 
-                       ncol(cruall$data)/12))
-      cdim <- dim(cruall$data)
-      #debias <- array((cru_tmp - as.vector(e_c_bias$data)),cdim)
-      cruall$data <-  array((cru_tmp - as.vector(e_c_bias$data)),cdim)
-      # convert 12 21 back to one dimension 252      
-     }
-    }
-    if (subbias_vali) {
-      if (every2grid) {
-        save(cruall, file=paste("../data/cru_allvar_debias_",syr_cru,"-",eyr_cru,"_2ndgrid.Rdata",sep=""))
-      } else {
-        save(cruall, file=paste("../data/cru_allvar_debias_",syr_cru,"-",eyr_cru,".Rdata",sep=""))
-      }
+                           path=crupath,small=every2grid,landonly=land_only)
+    if (every2grid) {
+      save(cruall, file=paste0("../data/cru/cru_allvar_",syr_cru,"-",eyr_cru,"_2ndgrid.Rdata"))
     } else {
-      if (every2grid) {
-        save(cruall, file=paste("../data/cru_allvar_",syr_cru,"-",eyr_cru,"_2ndgrid.Rdata",sep=""))
-      } else {
-        save(cruall, file=paste("../data/cru_allvar_",syr_cru,"-",eyr_cru,".Rdata",sep=""))  
-      }
+      save(cruall, file=paste0("../data/cru/cru_allvar_",syr_cru,"-",eyr_cru,".Rdata"))  
     }
   }
 }
 
-
 if (generate_HadCRU4){ 
-  print("generate_HadCRU4")
-  #cru4_may_sep <- read_echam1('HadCRUT4_ens_sd_may-sep_timemean.nc',timlim=c(2001,2002),
-  #                              path=cru4path,small=every2grid,landonly=F)
-  #cru4_oct_apr <- read_echam1('HadCRUT4_ens_sd_oct-apr_timemean.nc',timlim=c(2001,2002),
-  #                            path=cru4path,small=every2grid,landonly=F)
-  cru4_may_sep <- read_echam1('HadCRUT4_ens_sd_may-sep_yrmean.nc',timlim=c(1901,2002),
+  print("generate_HadCRU4 standard deviations")
+  # from instr. CRU ensemble, precalculated with cdo
+  cru4_may_sep <- read_echam1(paste0(cru4path,'HadCRUT4_ens_sd_may-sep_yrmean.nc'),timlim=c(1901,2002),
                               path=cru4path,small=every2grid,landonly=F)
-  cru4_oct_apr <- read_echam1('HadCRUT4_ens_sd_oct-apr_yrmean.nc',timlim=c(1901,2002),
+  cru4_oct_apr <- read_echam1(paste0(cru4path,'HadCRUT4_ens_sd_oct-apr_yrmean.nc'),timlim=c(1901,2002),
                               path=cru4path,small=every2grid,landonly=F)
   cru4_may_sep$ensmean <- cru4_may_sep$data
   cru4_oct_apr$ensmean <- cru4_oct_apr$data
   if (every2grid) {
-    save(cru4_may_sep,cru4_oct_apr, file="../data/cru4_ens_sd_2ndgrid.Rdata")
+    save(cru4_may_sep,cru4_oct_apr, file="../data/cru/cru4_ens_sd_2ndgrid.Rdata")
   } else {
-    save(cru4_may_sep,cru4_oct_apr, file="../data/cru4_ens_sd.Rdata")  
+    save(cru4_may_sep,cru4_oct_apr, file="../data/cru/cru4_ens_sd.Rdata")  
   }
 }
 
 if (generate_LUTPAULKUT){ 
   print("generate_LUTPAULKUT")
-# ACHTUNG seasonal resolution
+  # ATTENTION: seasonal resolution
   if (syr<1750){syr_recon=1750} else {syr_recon=syr}
   if (eyr>1999){eyr_recon=1999} else {eyr_recon=eyr}
   #  see script in EnSRF/script/merge_recon.sh for regridding and co of orig. recon data set
   reconall <- read_echam1('recon_allvar_1750-1999',xlim=c(-180,180), ylim=c(-90,90), 
-                          timlim=c(syr_recon,eyr_recon),path=reconpath,small=every2grid,landonly=land_only)
+                          timlim=c(syr_recon,eyr_recon),path=reconpath,small=every2grid,
+                          landonly=land_only)
   reconall$data[reconall$names=="precip",,]<-reconall$data[reconall$names=="precip",,]/3
   if (every2grid) {
     save(reconall, file=paste("../data/recon_allvar_",syr,"-",eyr,"_2ndgrid.Rdata",sep=""))
@@ -526,45 +151,37 @@ if (generate_LUTPAULKUT){
 
 if (generate_GHCN){
   print("generate_GHCN")
+  # created only once for the full period and then cut after loading
   ghcn <- read_ghcn_refyr(1600,2005,1600,1869)
-#  ghcn <- read_ghcn_refyr(syr,eyr,1600,1869)
-#  ghcn <- read_ghcn_refyr(syr,eyr,syr,eyr)
   ghcn$names <-rep('temp2',length(ghcn$names))
-  save(ghcn, file=paste0("../data/ghcn_",syr,"-",eyr,".Rdata"))
+  save(ghcn, file=paste0("../assim_data/ghcn/ghcn_temp",syr,"-",eyr,".Rdata"))
 }
 
 if (generate_GHCN_precip){
   print("generate_GHCN_precip")
+  # created only once for the full period and then cut after loading
   ghcn_precip <- read_ghcn_refyr_precip(1600,2005,1600,1869)
-#  ghcn_precip <- read_ghcn_refyr_precip(syr,eyr,1600,1869)
-#  ghcn_precip <- read_ghcn_refyr_precip(syr,eyr,syr,eyr)
   ghcn_precip$data <- ghcn_precip$data / 10 # to make units echam conform
   ghcn_precip$names <-rep('precip',length(ghcn_precip$names))
-  save(ghcn_precip, file=paste0("../data/ghcn_precip_",syr,"-",eyr,".Rdata")) 
+  save(ghcn_precip, file=paste0("../assim_data/ghcn/ghcn_precip_",syr,"-",eyr,".Rdata")) 
 }
 
 if (generate_t_yuri){
   print("generate_t_yuri")
-  source("../data_yuri/t_assimil/read_all.R")
+  source("../assim_data/data_yuri/t_assimil/read_all.R")
 }
 
 if (generate_slp_yuri){
   print("generate_slp_yuri")
-  source("../data_yuri/slp_assimil/read_all.R")
+  source("../assim_data/data_yuri/slp_assimil/read_all.R")
 }
 
-#if (generate_HISTALP){
-#  histalp <- read_histalp(timlim=c(syr,eyr))
-#  histalp$names <- rep('temp2',length(histalp$names))
-#  save(histalp, file='../data/histalp.Rdata')
-#} 
-
-if (generate_DOCU){
-  print("generate_DOCU")
-  source("../data_yuri/t_docu/read_seas.R")
-  source("../data_yuri/t_docu/read_monthly.R")
-  source("../data_yuri/t_docu/read_JFMA.R")
-  source("../data_yuri/t_docu/read_AMJJA.R")
+if (generate_DOCUM){
+  print("generate_DOCUM")
+  source("../assim_data/data_yuri/t_docu/read_seas.R")
+  source("../assim_data/data_yuri/t_docu/read_monthly.R")
+  source("../assim_data/data_yuri/t_docu/read_JFMA.R")
+  source("../assim_data/data_yuri/t_docu/read_AMJJA.R")
 }
 
 if (generate_PROXIES){
@@ -592,8 +209,6 @@ if (generate_PROXIES){
   save(realprox, file=paste0("../data/real_proxies_",syr,"-",eyr,".Rdata"))
 } 
 
-docu_backup <- docu
-
 
 
 
@@ -606,63 +221,25 @@ docu_backup <- docu
 ##########################################################################################
 if (sixmonstatevector) {syr2=syr+1} else {syr2=syr}
 for (cyr in syr2:eyr) {
-#for (cyr in syr2:1955) {  
   print(cyr)
   asyr <- cyr-35
   if (asyr < 1601) {asyr = 1601}
-  if (shortanom) { asyr = syr }
   aeyr <- cyr+35
   if (aeyr > 2005) {aeyr = 2005}
-  if (shortanom) { aeyr = eyr }
   ptm1 <- proc.time()
   if (every2grid) {
     load(paste("../data/echam/echam_",(cyr-1),"-",cyr,"_2ndgrid.Rdata",sep=""))
   } else {
     load(paste("../data/echam/echam_",(cyr-1),"-",cyr,".Rdata",sep=""))
   }
-#   if (every2grid) {
-#     load(paste("../data/echam_",syr,"-",eyr,"_2ndgrid.Rdata",sep=""))
-#   } else {
-#     load(paste("../data/echam_",syr,"-",eyr,".Rdata",sep=""))
-#   }
-  if (ind_ECHAM) {
-    load(file=paste("../data/indices_echam_",syr,"-",eyr,".Rdata",sep=""))
-    if ((shortanom==F) & (anomaly_assim==T)) {
-      ti=which(floor(echind$time)>=asyr & floor(echind$time)<=aeyr)
-      sts=ti[1]
-      ets=ti[length(ti)]
-      echind$data=echind$data[,sts:ets,]       
-      echind$time=echind$time[sts:ets]
-    }
-  }
-  if (subbias_vali) {
-    if (every2grid) {
-      if (ncep_vali) {load(paste("../data/ncep_allvar_debias__",syr,"-",eyr,"2ndgrid.Rdata",sep=""))
-      } else if (recon_vali) {load(paste("../data/recon_allvar_",syr,"-",eyr,"_2ndgrid.Rdata",sep=""))
-      } else if (cru_vali) {
-#        load(paste("../data/cru_allvar_debias_",syr,"-",eyr,"_2ndgrid.Rdata",sep="")) # cru_vali
-        load("../data/cru_allvar_debias_1901-2004_2ndgrid.Rdata") # cru_vali 
-        ti=which(floor(cruall$time)>=syr & floor(cruall$time)<=eyr)
-        sts=ti[1]
-        ets=ti[length(ti)]
-        cruall$data=cruall$data[,sts:ets,,drop=F]       
-        cruall$time=cruall$time[sts:ets]
-      }
-    } else {
-      if (ncep_vali) {load(paste("../data/ncep_allvar_debias_",syr,"-",eyr,".Rdata",sep=""))
-      } else if (recon_vali) {load(paste("../data/recon_allvar_",syr,"-",eyr,".Rdata",sep=""))
-      } else if (cru_vali) {load(paste("../data/cru_allvar_debias_",syr,"-",eyr,".Rdata",sep=""))} # cru_vali
-    }
+  if (every2grid) {
+    if (ncep_vali) {load(paste("../data/ncep_allvar_",syr,"-",eyr,"_2ndgrid.Rdata",sep=""))
+    } else if (recon_vali) {load(paste("../data/recon_allvar_",syr,"-",eyr,"_2ndgrid.Rdata",sep=""))
+    } else if (cru_vali) {load(paste("../data/cru_allvar_",syr,"-",eyr,"_2ndgrid.Rdata",sep=""))} 
   } else {
-    if (every2grid) {
-      if (ncep_vali) {load(paste("../data/ncep_allvar_",syr,"-",eyr,"_2ndgrid.Rdata",sep=""))
-      } else if (recon_vali) {load(paste("../data/recon_allvar_",syr,"-",eyr,"_2ndgrid.Rdata",sep=""))
-      } else if (cru_vali) {load(paste("../data/cru_allvar_",syr,"-",eyr,"_2ndgrid.Rdata",sep=""))} # cru_vali
-    } else {
-      if (ncep_vali) {load(paste("../data/ncep_allvar_",syr,"-",eyr,".Rdata",sep=""))
-      } else if (recon_vali) {load(paste("../data/recon_allvar_",syr,"-",eyr,".Rdata",sep=""))
-      } else if (cru_vali) {load(paste("../data/cru_allvar_",syr,"-",eyr,".Rdata",sep=""))} # cru_vali
-    }
+    if (ncep_vali) {load(paste("../data/ncep_allvar_",syr,"-",eyr,".Rdata",sep=""))
+    } else if (recon_vali) {load(paste("../data/recon_allvar_",syr,"-",eyr,".Rdata",sep=""))
+    } else if (cru_vali) {load(paste("../data/cru_allvar_",syr,"-",eyr,".Rdata",sep=""))} 
   }
   if (ind_recon) {
     load(file=paste("../data/indices_recon_",syr,"-",eyr,".Rdata",sep=""))
@@ -677,7 +254,7 @@ for (cyr in syr2:eyr) {
   } else { vali = F }
   if (instrumental){
     if (yuri_slp) {
-      load('../data_yuri/slp.Rdata') # monthly slp collection from yuri
+      load('../assim_data/data_yuri/slp.Rdata') # monthly slp collection from yuri, histalp included
       inst_slp <- slp
       # cut time period as not done yet
       ti=which(floor(inst_slp$time)>=syr & floor(inst_slp$time)<=eyr)
@@ -687,7 +264,7 @@ for (cyr in syr2:eyr) {
       inst_slp$time=inst_slp$time[sts:ets]
     }
     if (yuri_temp) {
-      load('../data_yuri/t.Rdata') # monthly temp collection from yuri
+      load('../assim_data/data_yuri/t.Rdata') # monthly temp collection from yuri, histalp included
       inst_t <- t
       # cut time period as not done yet
       ti=which(floor(inst_t$time)>=syr & floor(inst_t$time)<=eyr)
@@ -697,8 +274,7 @@ for (cyr in syr2:eyr) {
       inst_t$time=inst_t$time[sts:ets]
     }
     if (ghcn_temp) {
-#      load(paste0("../data/ghcn_",syr,"-",eyr,".Rdata"))
-      load("../data/ghcn_1600-2005.Rdata")
+      load("../assim_data/ghcn/ghcn_temp_1600-2005.Rdata")
       # cut time period as not done yet
       ti=which(floor(ghcn$time)>=syr & floor(ghcn$time)<=eyr)
       sts=ti[1]
@@ -707,8 +283,7 @@ for (cyr in syr2:eyr) {
       ghcn$time=ghcn$time[sts:ets]
     }
     if (ghcn_prec) {
-#      load(paste0("../data/ghcn_precip_",syr,"-",eyr,".Rdata"))
-      load("../data/ghcn_precip_1600-2005.Rdata")
+      load("../assim_data/ghcn/ghcn_precip_1600-2005.Rdata")
       # cut time period as not done yet
       ti=which(floor(ghcn_precip$time)>=syr & floor(ghcn_precip$time)<=eyr)
       sts=ti[1]
@@ -716,15 +291,22 @@ for (cyr in syr2:eyr) {
       ghcn_precip$data=ghcn_precip$data[sts:ets,]       
       ghcn_precip$time=ghcn_precip$time[sts:ets]
     }
-#    load('../data/histalp.Rdata')
   }
   
   if (real_proxies){
     load(paste0("../data/real_proxies_",syr,"-",eyr,".Rdata"))  
   }
 
-  docu <- docu_backup
-  if (docu){
+  if (docum){
+    load('../assim_data/data_yuri/t_docu_monthly.Rdata') 
+    doc_t_mon <- t
+    ti=which(floor(doc_t_mon$time)>=syr & floor(doc_t_mon$time)<=eyr)
+    sts=ti[1]
+    ets=ti[length(ti)]
+    doc_t_mon$data=doc_t_mon$data[sts:ets,]
+    doc_t_mon$time=doc_t_mon$time[sts:ets]
+    if (!any(!is.na(doc_t_mon$data))) { docum=F }
+# next section commented because we only read monthly docum data at the moment    
 #     load('../data_yuri/t_docu_seas.Rdata') 
 #     doc_t_seas <- t
 #     # cut time period as not done yet
@@ -733,14 +315,6 @@ for (cyr in syr2:eyr) {
 #     ets=ti[length(ti)]
 #     doc_t_seas$data=doc_t_seas$data[sts:ets,]
 #     doc_t_seas$time=doc_t_seas$time[sts:ets]
-    load('../data_yuri/t_docu_monthly.Rdata') 
-    doc_t_mon <- t
-    ti=which(floor(doc_t_mon$time)>=syr & floor(doc_t_mon$time)<=eyr)
-    sts=ti[1]
-    ets=ti[length(ti)]
-    doc_t_mon$data=doc_t_mon$data[sts:ets,]
-    doc_t_mon$time=doc_t_mon$time[sts:ets]
-    if (!any(!is.na(doc_t_mon$data))) { docu=F }
 #     load('../data_yuri/t_docu_JFMA.Rdata') 
 #     doc_t_JFMA <- t
 #     ti=which(floor(doc_t_JFMA$time)>=syr & floor(doc_t_JFMA$time)<=eyr)
@@ -1547,7 +1121,7 @@ for (cyr in syr2:eyr) {
   }
 
 
-  if (docu) {
+  if (docum) {
     if (anomaly_assim){
       ti=which(floor(doc_t_mon$time)>=(cyr-35) &
                  floor(doc_t_mon$time)<=(cyr+35))
@@ -1864,23 +1438,6 @@ for (cyr in syr2:eyr) {
         c(nrow(realprox.tmp$data), 2, ncol(realprox.tmp$data)/2)), 1:2, mean,na.rm=T)))
       realprox <- realprox.anom
     }
-#     # write_coor done in EnSRF_prepplot script
-#     if (write_coor) {
-#       # proxy data coordinates at each time step
-#       lonlat_year=list()
-#       for (t in 1:length(realprox$time)) {
-#         tf=as.logical(!is.na(realprox$data[,t]))
-#         outstr <- cbind(realprox$lon[tf],realprox$lat[tf],realprox$names[tf])
-#         outprox <- outstr[outstr[,3]=="prox",]
-#         outprox2 <- unique(t(apply(outprox[,1:2],1,paste0)))
-#         outstat <- outstr[outstr[,3]!="prox",]
-#         outstat2 <- unique(t(apply(outstat[,1:2],1,paste0)))
-#         write.table(outstat2, file=paste0('../data/coor/stat_coor_',realprox$time[t],'.csv'),
-#                     row.names=F,col.names=F)
-#         write.table(outprox2, file=paste0('../data/coor/prox_coor_',realprox$time[t],'.csv'),
-#                     row.names=F,col.names=F)
-#       }
-#     }
   }  
 
 
@@ -1889,7 +1446,7 @@ for (cyr in syr2:eyr) {
 #########################################################################################
   
 # real trw proxy multiple regression approach
-  if ((real_proxies) & (!instrumental)) {  # & (!docu)) {
+  if ((real_proxies) & (!instrumental)) {  # & (!docum)) {
     if (reduced_proxies) {
       every <- 12 
       redpos <-seq(1,length(realprox$lon),every)
@@ -1919,7 +1476,7 @@ for (cyr in syr2:eyr) {
                     time=realprox.allts$time)  
   } 
   
-  if (docu) {
+  if (docum) {
     if (sixmonstatevector) { #allows for merging differnt temp. resolutions
       # change proxy array that only 2 ts instead of 12 monthly ts but 6 times as 
       # many variables, one for each month
@@ -2199,7 +1756,7 @@ for (cyr in syr2:eyr) {
       realprox$var_residu <- realprox$var_residu[pos]
       realprox$names <- realprox$names[pos] 
     }
-    if ((docu) & (instrumental)) {
+    if ((docum) & (instrumental)) {
       ti <- which(floor(inst$time)==cyr)
       sts <- ti[1]
       ets <- ti[length(ti)]
@@ -2256,7 +1813,7 @@ for (cyr in syr2:eyr) {
     # add data source
     if (instrumental) {
     inst$sour <- rep('inst',length(inst$lon))    }
-    if (docu) {
+    if (docum) {
     docall$sour <- rep('doc',length(docall$lon))
     docall.allts$sour <- rep('doc',length(docall$lon))    }
     if (real_proxies) {
@@ -2322,7 +1879,7 @@ for (cyr in syr2:eyr) {
       }
     }
 
-    if (docu) {
+    if (docum) {
       tmpmr <- matrix(NA,nrow=length(docall$lon),ncol=ncol(proxies$mr))
       tmpres <- rep(NA,length(proxies$var_residu))
       tmpelev <- rep(NA,length(proxies$height))
@@ -2342,7 +1899,7 @@ for (cyr in syr2:eyr) {
     }
   }
 
-  if (!instrumental & real_proxies & docu) {
+  if (!instrumental & real_proxies & docum) {
     docall$sour <- rep('doc',length(docall$lon))
     docall.allts$sour <- rep('doc',length(docall$lon))    
     realprox$sour <- rep('prox',length(realprox$lon))
@@ -2433,17 +1990,17 @@ for (cyr in syr2:eyr) {
 # ------------------------------------------------------------------------------
 # Compute H (forward operator)
 # ------------------------------------------------------------------------------
-  if ((real_proxies) & (!instrumental) & (!docu) & (!sixmonstatevector)) {
+  if ((real_proxies) & (!instrumental) & (!docum) & (!sixmonstatevector)) {
      Hcal <- Matrix(compute_H_proxy(realprox, echam, realprox$mr, threshold=700), 
                     sparse=T)
   }
-#   } else if (instrumental & sixmonstatevector & !real_proxies & !docu) {
+#   } else if (instrumental & sixmonstatevector & !real_proxies & !docum) {
 #     Hcal <- Matrix(compute_H_sixmonstatevector(calibrate, echam, threshold=700), 
 #                    sparse=T)
-#   } else if (docu & sixmonstatevector & !real_proxies & !instrumental) {
-#     Hcal <- Matrix(compute_H_sixmonstatevector_docu(calibrate, echam, threshold=700), 
+#   } else if (docum & sixmonstatevector & !real_proxies & !instrumental) {
+#     Hcal <- Matrix(compute_H_sixmonstatevector_docum(calibrate, echam, threshold=700), 
 #                    sparse=T)
-#   } else if (instrumental & sixmonstatevector & real_proxies & !docu) {  
+#   } else if (instrumental & sixmonstatevector & real_proxies & !docum) {  
 #     Hcal1 <- compute_H_proxy(realprox, echam, realprox$mr, threshold=700)
 #     Hcal2 <- compute_H_sixmonstatevector(inst, echam, threshold=700)
 #     Hcal <- Matrix(rbind(Hcal2,Hcal1), sparse=T)
@@ -2473,7 +2030,7 @@ for (cyr in syr2:eyr) {
       Hcal2 <- array(NA,dim=c(dim(realprox$data)[1],14))
       Hcal2 <- compute_Hi_Hredux_proxy(realprox, etmp, realprox$mr, threshold=700)
     }
-    if (docu) {
+    if (docum) {
       Hcal3 <- array(NA,dim=c(dim(docall$data)[1],2))
       Hcal3 <- compute_Hi_Hredux_sixmonstatevector(docall, etmp, threshold=700)
       Hcal3[Hcal3==0] <- NA
@@ -2491,17 +2048,17 @@ for (cyr in syr2:eyr) {
 #    print('ACHTUNG, compute_H has NOT been updated to Jonas new code')
 #    Hcal <- Matrix(compute_H_temp_precip_slp(calibrate, echam),sparse=T)
 #  }
-    if (instrumental & !docu & sixmonstatevector & !real_proxies) {
+    if (instrumental & !docum & sixmonstatevector & !real_proxies) {
     #    print('ACHTUNG, compute_H has NOT been updated to Jonas new code')
     #    H.i <- array(NA,c(nrow(Hcal),length(which(Hcal[1,]!=0))))
       H.i <- array(NA,c(nrow(Hcal1),1))
-    } else if (instrumental & docu & sixmonstatevector & !real_proxies) {
+    } else if (instrumental & docum & sixmonstatevector & !real_proxies) {
 #    print('ACHTUNG, compute_H has NOT been updated to Jonas new code')
 #    H.i <- array(NA,c(nrow(Hcal),length(which(Hcal[1,]!=0))))
       H.i <- array(NA,c((nrow(Hcal1)+nrow(Hcal3)),1))
-    } else if (!instrumental & docu & sixmonstatevector & real_proxies) {
+    } else if (!instrumental & docum & sixmonstatevector & real_proxies) {
       H.i <- array(NA,c((nrow(Hcal2)+nrow(Hcal3)),7))
-    } else if (instrumental & !docu & sixmonstatevector & real_proxies) {
+    } else if (instrumental & !docum & sixmonstatevector & real_proxies) {
       H.i <- array(NA,c((nrow(Hcal1)+nrow(Hcal2)),7))
     } else { 
 #    H.i <- array(NA,c(nrow(Hcal),max(sapply(1:dim(Hcal)[1],function(x) length(which(Hcal[x,]!=0))))))
@@ -2512,19 +2069,19 @@ for (cyr in syr2:eyr) {
       H.i[1:nrow(Hcal1),1] <- Hcal1[,1] 
       Hredux[1:nrow(Hcal1),1] <- Hcal1[,2] 
     } 
-    if (instrumental & real_proxies & docu) {
+    if (instrumental & real_proxies & docum) {
       H.i[(nrow(Hcal1)+1):(nrow(Hcal1)+nrow(Hcal2)),] <- Hcal2[,c(1,3,5,7,9,11,13)] 
       Hredux[(nrow(Hcal1)+1):(nrow(Hcal1)+nrow(Hcal2)),] <- Hcal2[,c(2,4,6,8,10,12,14)]   
       H.i[((nrow(Hcal1)+nrow(Hcal2)+1):nrow(H.i)),1] <- Hcal3[,1]
       Hredux[((nrow(Hcal1)+nrow(Hcal2)+1):nrow(H.i)),1] <- Hcal3[,2]
     }
-    if (!instrumental & real_proxies & docu) {
+    if (!instrumental & real_proxies & docum) {
       H.i[1:nrow(Hcal2),] <- Hcal2[,c(1,3,5,7,9,11,13)] 
       Hredux[1:nrow(Hcal2),] <- Hcal2[,c(2,4,6,8,10,12,14)]   
       H.i[((nrow(Hcal2)+1):nrow(H.i)),1] <- Hcal3[,1]
       Hredux[((nrow(Hcal2)+1):nrow(H.i)),1] <- Hcal3[,2]
     }
-    if (instrumental & real_proxies & !docu) {
+    if (instrumental & real_proxies & !docum) {
       H.i[(nrow(Hcal1)+1):(nrow(Hcal1)+nrow(Hcal2)),] <- Hcal2[,c(1,3,5,7,9,11,13)] 
       Hredux[(nrow(Hcal1)+1):(nrow(Hcal1)+nrow(Hcal2)),] <- Hcal2[,c(2,4,6,8,10,12,14)] 
     }
@@ -2550,10 +2107,10 @@ for (cyr in syr2:eyr) {
 #   for (i in 1:nrow(Hcal)) {
 # #    print(length(which(Hcal[i,]!=0)))
 #     if ((length(which(Hcal[i,]!=0))) > 0){
-#       if ((instrumental | docu) & sixmonstatevector & !real_proxies) {
+#       if ((instrumental | docum) & sixmonstatevector & !real_proxies) {
 #         H.i[i,] <- which(Hcal[i,]!=0)
 #         Hredux[i,] <- Hcal[i,(Hcal[i,]!=0)]
-# #      } else if (docu & sixmonstatevector & !real_proxies) {
+# #      } else if (docum & sixmonstatevector & !real_proxies) {
 # #        l <- 5-(length(which(Hcal[i,]!=0)))
 # #        H.i[i,] <- c(which(Hcal[i,]!=0),rep(NA,l))
 # #        Hredux[i,] <- c(Hcal[i,(Hcal[i,]!=0)],rep(NA,l))
@@ -2588,7 +2145,7 @@ for (cyr in syr2:eyr) {
 # ------------------------------------------------------------------------------
 # run analysis
 # ------------------------------------------------------------------------------
-  if ((instrumental) || (real_proxies) || (docu)) {
+  if ((instrumental) || (real_proxies) || (docum)) {
 # R for perfect data would be
 # R <- rep(0, nrow(Hcal))
 # R is simply the squared random error assumed for instr. data because we assume 
@@ -2600,14 +2157,14 @@ for (cyr in syr2:eyr) {
 #      R2 = array(1,c(nrow(Hcal2), 1))
 #      R1 = array(1,c(nrow(Hcalwin), 1))
 #      R2 = array(1,c(nrow(Hcalsum), 1))
-      if ((real_proxies) & ((instrumental) | (docu))) { #< 1970
+      if ((real_proxies) & ((instrumental) | (docum))) { #< 1970
 #        Rcal <- c(temp2=0.5, precip=50, slp=10)[calibrate$names]
         Rcal <- c(temp2=0.9, precip=50, slp=10)[calibrate$names]
 #        if (avg_prox_per_grid) {Rcal <- Rcal*(1/calibrate$numavg)}
 #        Rcal[calibrate$names=="prox"] <- realprox$var_residu
         Rcal[calibrate$names=="prox"] <- realprox$var_residu/2
         Rcal[calibrate$sour=="doc"] <- 0.25 # equals 0.5 std. dev.
-      } else if ((real_proxies) & (!instrumental) & (!docu)) { # should not happen
+      } else if ((real_proxies) & (!instrumental) & (!docum)) { # should not happen
 #        R1[calibrate$names=='temp',]<-try(abs(calibrate$data[calibrate$names=='temp',1]
 #                                             *0.0001))
         Rcal <- realprox$var_residu/2
@@ -2618,7 +2175,7 @@ for (cyr in syr2:eyr) {
 #                                             *0.0001))
 #        R2[,1] <- realprox$var_residu
 #        R2[which(is.na(R2))] <- 0 #/100 #to check why there is hardly any correction
-      } else if (((instrumental) | (docu)) & (!real_proxies)) { # >1970
+      } else if (((instrumental) | (docum)) & (!real_proxies)) { # >1970
         # Jonas for pseudoproxies
 #        Rcal <- c(temp2=0.5, precip=50, slp=20)[calibrate$names[1:(length(calibrate$names)/6)]]
         Rcal <- c(temp2=0.9, precip=50, slp=10)[calibrate$names]

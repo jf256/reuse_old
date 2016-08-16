@@ -7496,7 +7496,7 @@ if (landusebugbias){
     i=0
     emean103 <- array(NA,dim=c(4608,30))
     for (cyr in syr:eyr) {
-      i=i+1
+      i <- i+1
       load(paste0(datadir,"EnSRF_analysis/echam_103/echam_",(cyr-1),"-",(cyr),"_2ndgrid.Rdata"))
       emean103[,i] <- apply(echam$data[which(echam$names=="temp2"),13:24,1],1,mean)
     } 
@@ -7516,6 +7516,17 @@ if (landusebugbias){
     # calc bias
     bias_a_e103_period <- amean_period-(emean103_period-273.15)
     bias_e_e103_period <- emean_period-(emean103_period-273.15)
+    # calc NH average
+    load("/Volumes/DATA/unibe/r/data/analysis/analysis_1951.Rdata") # for landseamask
+    land <- which(!is.na(validate$ensmean[1:4608,1]))
+    pos <- land[land < max(which(echam$lat[1:length(which(echam$names=="temp2"))]>20))]
+    #pos <- which(echam$lat[1:length(which(echam$names=="temp2"))]>0)
+    lats <- echam$lat[pos]
+    weights <- cos(lats/180*pi)
+    weights <- weights/sum(weights)
+    nhmeanbias <- sum(bias_e_e103_period[pos]*weights)
+    nhbiasrange <- range(bias_e_e103_period[pos])
+    
     # plot bias
     plotbias <- echam
     plotbias$ensmean <- cbind(bias_e_e103_period,bias_a_e103_period) #,dim=c(4608,2,1))

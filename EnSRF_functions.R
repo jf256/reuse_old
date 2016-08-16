@@ -1,68 +1,56 @@
-#initialization of standard values
-machine="macbook" #"climcal3" # "climpa12" # 
-if (machine=="macbook") {
-  datadir="/Volumes/DATA/climdata/"
-} else {
-  datadir="/scratch/joerg/climdata/"
-}
+# set direcotries
+echmaskpath <- paste0(datadir,'echam')
+echpath <- paste0(datadir,'echam/1600-2005')
+echallvarpath <- paste0(datadir,'echam/allvar7')
+echanompath <- paste0(datadir,'echam/anom')
+echclimpath <- paste0(datadir,'echam/clim')
+echsdpath <- paste0(datadir,'echam/sd')
+crupath <- paste0(datadir,'cru')
+cru4path <- paste0(datadir,'cru4')
+reconpath <- paste0(datadir,'recon/luterbacher')
+erapath <- paste0(datadir,'era')
+ghcntemppath <- paste0(datadir,'instr/ghcn/temp_v3/')
+ghcnprecippath <- paste0(datadir,'instr/ghcn/precip_v2/')
+histalppath <- paste0(datadir,'instr/histalp/')
+proxypath <- paste0(datadir,'proxies_EnSRF/petra/')
+mxdpath <- paste0(datadir,'proxies_EnSRF/mxd/')
+pagespath <- paste0(datadir,'PAGES_DB_Raphi')
+schweingrpath <- paste0(datadir,'proxies_EnSRF/schweingr/')
+nceppath <- paste0(datadir,'reanalysis/ncep')
+twentycrpath <- paste0(workdir,'../comparison_data/20cr')
+# echindpath <- paste0(datadir,'echam/indices') # precalculated indices showed be removed
 
-#base='/scratch/joerg/climdata/'
-#base='~/Documents/climdata/'
-#base='/Volumes/DATA/climdata/'
-base <- datadir
-echmaskpath <- paste0(base,'echam')
-echpath <- paste0(base,'echam/1600-2005')
-echallvarpath <- paste0(base,'echam/allvar7')     # allvar4 before
-echallvarnewpath <- paste0(base,'echam/allvar7')
-echanompath <- paste0(base,'echam/anom')
-echclimpath <- paste0(base,'echam/clim')
-echsdpath <- paste0(base,'echam/sd')
-echindpath <- paste0(base,'echam/indices')
-crupath <- paste0(base,'cru')
-cru4path <- paste0(base,'cru4')
-reconpath <- paste0(base,'recon/luterbacher')
-erapath <- paste0(base,'era')
-ghcnpath <- paste0(base,'instr/ghcn/temp_v3/')
-ghcnprecippath <- paste0(base,'instr/ghcn/precip_v2/')
-histalppath <- paste0(base,'instr/histalp/')
-proxypath <- paste0(base,'proxies_EnSRF/petra/')
-mxdpath <- paste0(base,'proxies_EnSRF/mxd/')
-schweingrpath <- paste0(base,'proxies_EnSRF/schweingr/')
-nceppath <- paste0(base,'reanalysis/ncep')
-twentycrpath <- '/Users/joerg/unibe/projects/EnSRF/r/comparison_data/20cr'
-
-# first install ncdfUtils of Jonas with all his functions 
-# install.packages('/Users/joerg/Documents/unibe/projects/EnSRF/jonas/ncdfUtils_0.4-12.tar.gz', repos=NULL)
-# oder alternativ von der Kommandozeile mit:
-# R CMD INSTALL /Users/joerg/Documents/unibe/projects/EnSRF/jonas/ncdfUtils*tar.gz
 library(maps)
 library(mapdata)
 library(TTR)
 library(ncdf4)
-#library(ncdfUtils)
 library(RNetCDF)
 library(zoo)
-library(abind) # to bind multidimensional arrays
-library(Matrix) # for sparse matrices (not saving value 0)
-library(ff) # saves large matrices on disk and not im memory
+library(abind)         # to bind multidimensional arrays
+library(Matrix)        # for sparse matrices (not saving value 0)
+library(ff)            # saves large matrices on disk and not im memory
 library(caTools)
-library(pracma) # for wind vectors
-source('~/unibe/projects/EnSRF/r/packages/ncdfUtils/R/colfun.R')
-source('~/unibe/projects/EnSRF/r/packages/ncdfUtils/R/frac_in_polygon.R')
-source('~/unibe/projects/EnSRF/r/packages/ncdfUtils/R/geo2rot.R')
-source('~/unibe/projects/EnSRF/r/packages/ncdfUtils/R/ncdf_times.R')
-source('~/unibe/projects/EnSRF/r/packages/ncdfUtils/R/open.ncdf.R')
-source('~/unibe/projects/EnSRF/r/packages/ncdfUtils/R/plot_colourbar.R')
-source('~/unibe/projects/EnSRF/r/packages/ncdfUtils/R/plotmap.R')
-source('~/unibe/projects/EnSRF/r/packages/ncdfUtils/R/plotmap_new.R')
-source('~/unibe/projects/EnSRF/r/packages/ncdfUtils/R/plotmap_rot.R')
-source('~/unibe/projects/EnSRF/r/packages/ncdfUtils/R/set_position.R')
-source('~/unibe/projects/EnSRF/r/packages/ncdfUtils/R/shaded_contour.R')
+library(pracma)        # for wind vectors
+# first install ncdfUtils of Jonas with all his functions 
+# install.packages('.../jonas/ncdfUtils_0.4-12.tar.gz', repos=NULL)
+# or alternatively from bash: R CMD INSTALL .../jonas/ncdfUtils*tar.gz
+# or load manually:
+source('ncdfUtils/R/colfun.R')
+source('ncdfUtils/R/frac_in_polygon.R')
+source('ncdfUtils/R/geo2rot.R')
+source('ncdfUtils/R/ncdf_times.R')
+source('ncdfUtils/R/open.ncdf.R')
+source('ncdfUtils/R/plot_colourbar.R')
+source('ncdfUtils/R/plotmap.R')
+source('ncdfUtils/R/plotmap_new.R')
+source('ncdfUtils/R/plotmap_rot.R')
+source('ncdfUtils/R/set_position.R')
+source('ncdfUtils/R/shaded_contour.R')
 
 
 
 # NEW read in year by year more efficiently, therefore put ensemble together later
-read_echam4 <- function(filehead, path=echallvarnewpath, xlim=c(-180,180), ylim=c(-90,90), 
+read_echam4 <- function(filehead, path=echallvarpath, xlim=c(-180,180), ylim=c(-90,90), 
                         timlim=c(1600, 2005), small=F, landonly=F, anom=F, clim=F, std=F){
   # read in the land-sea mask of echam
   # mask out sea grid boxes (no variability)
@@ -227,24 +215,26 @@ read_echam4 <- function(filehead, path=echallvarnewpath, xlim=c(-180,180), ylim=
 #       }
       if (anom) {
         if (small) {
-          save(outdata, file=paste("../data/echam_anom/echam_anom_",num,"_",t,"-",(t+1),
+          save(outdata, file=paste("../data/echam/echam_anom/echam_anom_",num,"_",t,"-",(t+1),
                                    "_2ndgrid.Rdata",sep=""))
         } else {
-          save(outdata, file=paste("../data/echam_anom/echam_anom_",num,"_",t,"-",(t+1),".Rdata",sep=""))
+          save(outdata, file=paste("../data/echam/echam_anom/echam_anom_",num,"_",t,"-",(t+1),
+                                   ".Rdata",sep=""))
         } 
       } else if (clim) {
         if (small) {
-          save(outdata, file=paste("../data/echam_clim/echam_clim_",num,"_",t,"-",(t+1),
+          save(outdata, file=paste("../data/echam/echam_clim/echam_clim_",num,"_",t,"-",(t+1),
                                    "_2ndgrid.Rdata",sep=""))
         } else {
-          save(outdata, file=paste("../data/echam_clim/echam_clim_",num,"_",t,"-",(t+1),".Rdata",sep=""))
+          save(outdata, file=paste("../data/echam/echam_clim/echam_clim_",num,"_",t,"-",(t+1),".Rdata",sep=""))
         }
       } else if (std) {
         if (small) {
-          save(outdata, file=paste("../data/echam_sd/echam_sd_",num,"_",t,"-",(t+1),
+          save(outdata, file=paste("../data/echam/echam_sd/echam_sd_",num,"_",t,"-",(t+1),
                               "_2ndgrid.Rdata",sep=""))
         } else {
-          save(outdata, file=paste("../data/echam_sd/echam_sd_",num,"_",t,"-",(t+1),".Rdata",sep=""))
+          save(outdata, file=paste("../data/echam/echam_sd/echam_sd_",num,"_",t,"-",(t+1),
+                                   ".Rdata",sep=""))
         }
       } else {
         if (small) {
@@ -274,29 +264,29 @@ read_echam4 <- function(filehead, path=echallvarnewpath, xlim=c(-180,180), ylim=
 #       }
       if (anom) {
         if (small) {
-          load(file=paste("../data/echam_anom/echam_anom_",i,'_',t,"-",(t+1),
+          load(file=paste("../data/echam/echam_anom/echam_anom_",i,'_',t,"-",(t+1),
                                       "_2ndgrid.Rdata",sep=""))
           tmp[[i]] <- outdata
         } else {
-          load(file=paste("../data/echam_anom/echam_anom_",i,'_',t,"-",(t+1),".Rdata",sep=""))
+          load(file=paste("../data/echam/echam_anom/echam_anom_",i,'_',t,"-",(t+1),".Rdata",sep=""))
           tmp[[i]] <- outdata
         }
       } else if (clim) {
         if (small) {
-          load(file=paste("../data/echam_clim/echam_clim_",i,'_',t,"-",(t+1),
+          load(file=paste("../data/echam/echam_clim/echam_clim_",i,'_',t,"-",(t+1),
                                       "_2ndgrid.Rdata",sep=""))
           tmp[[i]] <- outdata
         } else {
-          load(file=paste("../data/echam_clim/echam_clim_",i,'_',t,"-",(t+1),".Rdata",sep=""))
+          load(file=paste("../data/echam/echam_clim/echam_clim_",i,'_',t,"-",(t+1),".Rdata",sep=""))
           tmp[[i]] <- outdata
         }
       } else if (std) {
         if (small) {
-          load(file=paste("../data/echam_sd/echam_sd_",i,'_',t,"-",(t+1),
+          load(file=paste("../data/echam/echam_sd/echam_sd_",i,'_',t,"-",(t+1),
                                     "_2ndgrid.Rdata",sep=""))
           tmp[[i]] <- outdata
         } else {
-          load(file=paste("../data/echam_sd/echam_sd_",i,'_',t,"-",(t+1),".Rdata",sep=""))
+          load(file=paste("../data/echam/echam_sd/echam_sd_",i,'_',t,"-",(t+1),".Rdata",sep=""))
           tmp[[i]] <- outdata
         }
       } else {
@@ -331,26 +321,26 @@ read_echam4 <- function(filehead, path=echallvarnewpath, xlim=c(-180,180), ylim=
     if (anom) {
       echam_anom <- echam
       if (small) {
-        save(echam_anom, file=paste("../data/echam_anom/echam_anom_",t,"-",(t+1),
+        save(echam_anom, file=paste("../data/echam/echam_anom/echam_anom_",t,"-",(t+1),
                                "_2ndgrid.Rdata",sep=""))
       } else {
-        save(echam_anom, file=paste("../data/echam_anom/echam_anom_",t,"-",(t+1),".Rdata",sep=""))
+        save(echam_anom, file=paste("../data/echam/echam_anom/echam_anom_",t,"-",(t+1),".Rdata",sep=""))
       }
     } else if (clim) {
       echam_clim <- echam
       if (small) {
-        save(echam_clim, file=paste("../data/echam_clim/echam_clim_",t,"-",(t+1),
+        save(echam_clim, file=paste("../data/echam/echam_clim/echam_clim_",t,"-",(t+1),
                                     "_2ndgrid.Rdata",sep=""))
       } else {
-        save(echam_clim, file=paste("../data/echam_clim/echam_clim_",t,"-",(t+1),".Rdata",sep=""))
+        save(echam_clim, file=paste("../data/echam/echam_clim/echam_clim_",t,"-",(t+1),".Rdata",sep=""))
       }
     } else if (std) {
       echam_sd <- echam
       if (small) {
-        save(echam_sd, file=paste("../data/echam_sd/echam_sd_",t,"-",(t+1),
+        save(echam_sd, file=paste("../data/echam/echam_sd/echam_sd_",t,"-",(t+1),
                                     "_2ndgrid.Rdata",sep=""))
       } else {
-        save(echam_sd, file=paste("../data/echam_sd/echam_sd_",t,"-",(t+1),".Rdata",sep=""))
+        save(echam_sd, file=paste("../data/echam/echam_sd/echam_sd_",t,"-",(t+1),".Rdata",sep=""))
       }
     } else {
       if (small) {
@@ -372,7 +362,7 @@ read_echam4 <- function(filehead, path=echallvarnewpath, xlim=c(-180,180), ylim=
 
 
 # NEW read in the ensemble of echam CCC400 simulations (precip slp temp2 stream geopoth u_zonmean u v)
-read_echam3 <- function(filehead, path=echallvarnewpath, xlim=c(-180,180), ylim=c(-90,90), timlim=c(1600, 2005), small=F, landonly=F){
+read_echam3 <- function(filehead, path=echallvarpath, xlim=c(-180,180), ylim=c(-90,90), timlim=c(1600, 2005), small=F, landonly=F){
   # read in the land-sea mask of echam
   # mask out sea grid boxes (no variability)
   if (landonly){
@@ -970,7 +960,7 @@ read_echam1 <- function(filehead, path=echpath, xlim=c(-180,180), ylim=c(-90,90)
             data <- array(data, c(dim(data)[1]*dim(data)[2], dim(data)[3]))
           }
         }
-        if ((path == echpath) | (path == echallvarnewpath) | (path == echallvarnewpath)) {
+        if ((path == echpath) | (path == echallvarpath) | (path == echallvarpath)) {
           if (varname == 'temp2') data <- data - 273.15
           if (varname == 'precip') data <- data * 3600 * 24 * 30
           if (varname == 'slp') data <- data / 100
@@ -1303,7 +1293,7 @@ read_proxy_mxd <- function(syr,eyr){
   t2 <- t1[,,1:840]
 #  p2 <- p1[,,1:840] 
   
-  load("../data/echam_1911-70.Rdata")
+  load("../data/echam/echam_1911-70.Rdata")
   t10=echam1901_70$ensmean[echam1901_70$names=='temp2',] # for echam temp
 #  p10=echam1901_70$ensmean[echam1901_70$names=='precip',] # for echam precip
   lonlist2=echam1901_70$lon
@@ -1430,7 +1420,7 @@ read_proxy_schweingr <- function(syr,eyr){
   nc_close(nc)
   t2 <- t1[,,1:720]
     
-  load("../data/echam_1911-70.Rdata")
+  load("../data/echam/echam_1911-70.Rdata")
   t10=echam1901_70$ensmean[echam1901_70$names=='temp2',1:720] # for echam temp
   #  p10=echam1901_70$ensmean[echam1901_70$names=='precip',] # for echam precip
   lonlist2=echam1901_70$lon
@@ -1567,7 +1557,7 @@ read_proxy2 <- function(syr,eyr){
   t2 <- t1[,,1:840]
   p2 <- p1[,,1:840] 
   
-  load("../data/echam_1911-70.Rdata")
+  load("../data/echam/echam_1911-70.Rdata")
   t10=echam1901_70$ensmean[echam1901_70$names=='temp2',] # for echam temp
   p10=echam1901_70$ensmean[echam1901_70$names=='precip',] # for echam precip
   lonlist2=echam1901_70$lon
@@ -2126,7 +2116,7 @@ t_prox=c('arge091','az510','buentgen_2005','buentgen_2006','buentgen_2009','bunt
   
 for(i in 1:length(t_prox)) {
 # print(c(t_prox[i],i))
- file_prox=paste("~/data/climdata/proxy/all_prox/",t_prox[i],".ppd",sep = "")  
+ file_prox=paste0(datadir,"proxy/all_prox/",t_prox[i],".ppd")  
  tmp10 <- read.table(file_prox,header=FALSE)
  if (tmp10[nrow(tmp10),1] > timlim[1]) { 
   lon=tmp10[1,1]
@@ -2181,8 +2171,8 @@ i_staz <- 0
 
 
 ### READ KUETTEL
-coords <- read.table("../assimil_data/slp/Stations_PP_1722_coordinates.csv",skip=1)
-data <- read.table("../assimil_data/slp/Stations_PP_1722_monthly_final.csv",skip=1)
+coords <- read.table("../assimil_data/data_yuri/slp/Stations_PP_1722_coordinates.csv",skip=1)
+data <- read.table("../assimil_data/data_yuri/slp/Stations_PP_1722_monthly_final.csv",skip=1)
 for (i_staz in 1:dim(coords)[1]) {
   x.lon[i_staz] <- coords[i_staz,3]
   x.lat[i_staz] <- coords[i_staz,2]
@@ -2200,9 +2190,9 @@ for (i_staz in 1:dim(coords)[1]) {
 }
 
 ### READ HISTALP
-files <- read.table("../assimil_data/slp/list1")
+files <- read.table("../assimil_data/data_yuri/slp/list1")
 for (filename in t(files)) {
- filename <- paste('../assimil_data/slp/',as.character(filename),sep='')
+ filename <- paste('../assimil_data/data_yuri/slp/',as.character(filename),sep='')
  i_staz <- i_staz+1
  header <- readLines(filename,n=3)
  x.lon[i_staz] <- as.numeric(substr(header[3],36,40))
@@ -2219,9 +2209,9 @@ for (filename in t(files)) {
 }
 
 ### READ CRU STATIONS
-files <- read.table("../assimil_data/slp/list2")
+files <- read.table("../assimil_data/data_yuri/slp/list2")
 for (filename in t(files)) {
-  filename <- paste('../assimil_data/slp/',as.character(filename),sep='')
+  filename <- paste('../assimil_data/data_yuri/slp/',as.character(filename),sep='')
   i_staz <- i_staz+1
   header <- readLines(filename,n=2)
   x.lon[i_staz] <- as.numeric(substr(header[2],1,6))
@@ -2237,9 +2227,9 @@ for (filename in t(files)) {
 }
 
 ### READ GHCN
-files <- read.table("../assimil_data/slp/list3")
+files <- read.table("../assimil_data/data_yuri/slp/list3")
 for (filename in t(files)) {
-  filename <- paste('../assimil_data/slp/',as.character(filename),sep='')
+  filename <- paste('../assimil_data/data_yuri/slp/',as.character(filename),sep='')
   i_staz <- i_staz+1
   header <- readLines(filename,n=5)
   x.lon[i_staz] <- as.numeric(substr(header[3],25,31))
@@ -2290,8 +2280,8 @@ x.data[,timesten] = x.data[,timesten]/10
 #x.height <-  x.height[trueslp]
 
 slp <- list(data=x.data, lon=x.lon, lat=x.lat, names=x.name, height=x.height, time=x.time)
-save(slp,file="../data/slp.Rdata")
-write.table(cbind(x.lon,x.lat),file="../assimil_data/slp/list_coord",sep="\t",col.names=FALSE,row.names=FALSE)
+save(slp,file="../assim_data/slp.Rdata")
+write.table(cbind(x.lon,x.lat),file="../assimil_data/data_yuri/slp/list_coord",sep="\t",col.names=FALSE,row.names=FALSE)
 #system("./plot_stations.gmt")
 }
 
@@ -2311,7 +2301,7 @@ read_ghcn <- function(timlim=c(syr,eyr)){
 
 years <- timlim[1]:timlim[2]
 
-stationfile <- paste(ghcnpath,'ghcn_mm_t2m_adj.inv',sep='')
+stationfile <- paste(ghcntemppath,'ghcn_mm_t2m_adj.inv',sep='')
 
 ww <- c(11, -1 , 8, -1, 9, -1, 6, -1, 30, -1, 4, 1, -1, 4, 2, 2, 2, 2, 1, 2, 16, 1)
 stations <- read.fwf(stationfile, ww, header=F, fill=T, na.string='-999')
@@ -2321,7 +2311,7 @@ stations[stations == -9999 ] <- NA
 # problem with orig ghcn v3 because data file has ids that are not in station header file
 
 ww2 <- c(11, 4, 4, rep(c(5,1,1,1),12)) #5, 1, 1, 1, 82, 5, 1, 1, 1)
-tmp <- as.matrix(read.fwf(paste(ghcnpath,'ghcn_mm_t2m_adj.dat',sep=''), ww2, header=F, fill=T, na.string='-9999'))
+tmp <- as.matrix(read.fwf(paste(ghcntemppath,'ghcn_mm_t2m_adj.dat',sep=''), ww2, header=F, fill=T, na.string='-9999'))
 colnames(tmp) <- c('ID', 'YEAR', 'ELEMENT', 'VALUE1', 'DMFLAG1', 'QCFLAG1', 'DSFLAG1', 'VALUE2', 'DMFLAG2', 'QCFLAG2', 'DSFLAG2', 'VALUE3', 'DMFLAG3', 'QCFLAG3', 'DSFLAG3', 'VALUE4', 'DMFLAG4', 'QCFLAG4', 'DSFLAG4', 'VALUE5', 'DMFLAG5', 'QCFLAG5', 'DSFLAG5', 'VALUE6', 'DMFLAG6', 'QCFLAG6', 'DSFLAG6', 'VALUE7', 'DMFLAG7', 'QCFLAG7', 'DSFLAG7', 'VALUE8', 'DMFLAG8', 'QCFLAG8', 'DSFLAG8', 'VALUE9', 'DMFLAG9', 'QCFLAG9', 'DSFLAG9', 'VALUE10', 'DMFLAG10', 'QCFLAG10', 'DSFLAG10', 'VALUE11', 'DMFLAG11', 'QCFLAG11', 'DSFLAG11', 'VALUE12', 'DMFLAG12', 'QCFLAG12', 'DSFLAG12')
 
 # ftp://ftp.ncdc.noaa.gov/pub/data/ghcn/v3/README
@@ -2361,14 +2351,14 @@ ghcn <- list(data=ghcn.data/100, lon=stations.new[mask,'LONGITUDE'], lat=station
 read_ghcn_refyr <- function(syr,eyr,refsyr,refeyr){
   years <- syr:eyr
   ryrs <- refsyr:refeyr
-  stationfile <- paste(ghcnpath,'ghcn_mm_t2m_adj.inv',sep='')
+  stationfile <- paste(ghcntemppath,'ghcn_mm_t2m_adj.inv',sep='')
   ww <- c(11, -1 , 8, -1, 9, -1, 6, -1, 30, -1, 4, 1, -1, 4, 2, 2, 2, 2, 1, 2, 16, 1)
   stations <- read.fwf(stationfile, ww, header=F, fill=T, na.string='-999')
   colnames(stations) <- c('ID', 'LATITUDE', 'LONGITUDE', 'STNELEV', 'NAME', 'GRELEV', 'POPCLS', 'POPSIZ', 'TOPO', 'STVEG', 'STLOC', 'OCNDIS', 'AIRSTN', 'TOWNDIS', 'GRVEG', 'POPCSS')
   stations[stations == -9999 ] <- NA
   # problem with orig ghcn v3 because data file has ids that are not in station header file
   ww2 <- c(11, 4, 4, rep(c(5,1,1,1),12)) #5, 1, 1, 1, 82, 5, 1, 1, 1)
-  tmp <- as.matrix(read.fwf(paste(ghcnpath,'ghcn_mm_t2m_adj.dat',sep=''), ww2, header=F, fill=T, na.string='-9999'))
+  tmp <- as.matrix(read.fwf(paste(ghcntemppath,'ghcn_mm_t2m_adj.dat',sep=''), ww2, header=F, fill=T, na.string='-9999'))
   colnames(tmp) <- c('ID', 'YEAR', 'ELEMENT', 'VALUE1', 'DMFLAG1', 'QCFLAG1', 'DSFLAG1', 'VALUE2', 'DMFLAG2', 'QCFLAG2', 'DSFLAG2', 'VALUE3', 'DMFLAG3', 'QCFLAG3', 'DSFLAG3', 'VALUE4', 'DMFLAG4', 'QCFLAG4', 'DSFLAG4', 'VALUE5', 'DMFLAG5', 'QCFLAG5', 'DSFLAG5', 'VALUE6', 'DMFLAG6', 'QCFLAG6', 'DSFLAG6', 'VALUE7', 'DMFLAG7', 'QCFLAG7', 'DSFLAG7', 'VALUE8', 'DMFLAG8', 'QCFLAG8', 'DSFLAG8', 'VALUE9', 'DMFLAG9', 'QCFLAG9', 'DSFLAG9', 'VALUE10', 'DMFLAG10', 'QCFLAG10', 'DSFLAG10', 'VALUE11', 'DMFLAG11', 'QCFLAG11', 'DSFLAG11', 'VALUE12', 'DMFLAG12', 'QCFLAG12', 'DSFLAG12')
   # ftp://ftp.ncdc.noaa.gov/pub/data/ghcn/v3/README
   tmp2 <- sort(unique(tmp[,1]))
@@ -2408,14 +2398,14 @@ read_ghcn_refyr <- function(syr,eyr,refsyr,refeyr){
 # read_ghcn_refyr <- function(syr,eyr,refsyr,refeyr){
 #   years <- syr:eyr
 #   ryrs <- refsyr:refeyr
-#   stationfile <- paste(ghcnpath,'ghcn_mm_t2m_adj.inv',sep='')
+#   stationfile <- paste(ghcntemppath,'ghcn_mm_t2m_adj.inv',sep='')
 #   ww <- c(11, -1 , 8, -1, 9, -1, 6, -1, 30, -1, 4, 1, -1, 4, 2, 2, 2, 2, 1, 2, 16, 1)
 #   stations <- read.fwf(stationfile, ww, header=F, fill=T, na.string='-999')
 #   colnames(stations) <- c('ID', 'LATITUDE', 'LONGITUDE', 'STNELEV', 'NAME', 'GRELEV', 'POPCLS', 'POPSIZ', 'TOPO', 'STVEG', 'STLOC', 'OCNDIS', 'AIRSTN', 'TOWNDIS', 'GRVEG', 'POPCSS')
 #   stations[stations == -9999 ] <- NA
 #   # problem with orig ghcn v3 because data file has ids that are not in station header file
 #   ww2 <- c(11, 4, 4, rep(c(5,1,1,1),12)) #5, 1, 1, 1, 82, 5, 1, 1, 1)
-#   tmp <- as.matrix(read.fwf(paste(ghcnpath,'ghcn_mm_t2m_adj.dat',sep=''), ww2, header=F, fill=T, na.string='-9999'))
+#   tmp <- as.matrix(read.fwf(paste(ghcntemppath,'ghcn_mm_t2m_adj.dat',sep=''), ww2, header=F, fill=T, na.string='-9999'))
 #   colnames(tmp) <- c('ID', 'YEAR', 'ELEMENT', 'VALUE1', 'DMFLAG1', 'QCFLAG1', 'DSFLAG1', 'VALUE2', 'DMFLAG2', 'QCFLAG2', 'DSFLAG2', 'VALUE3', 'DMFLAG3', 'QCFLAG3', 'DSFLAG3', 'VALUE4', 'DMFLAG4', 'QCFLAG4', 'DSFLAG4', 'VALUE5', 'DMFLAG5', 'QCFLAG5', 'DSFLAG5', 'VALUE6', 'DMFLAG6', 'QCFLAG6', 'DSFLAG6', 'VALUE7', 'DMFLAG7', 'QCFLAG7', 'DSFLAG7', 'VALUE8', 'DMFLAG8', 'QCFLAG8', 'DSFLAG8', 'VALUE9', 'DMFLAG9', 'QCFLAG9', 'DSFLAG9', 'VALUE10', 'DMFLAG10', 'QCFLAG10', 'DSFLAG10', 'VALUE11', 'DMFLAG11', 'QCFLAG11', 'DSFLAG11', 'VALUE12', 'DMFLAG12', 'QCFLAG12', 'DSFLAG12')
 #   # ftp://ftp.ncdc.noaa.gov/pub/data/ghcn/v3/README
 #   tmp2 <- sort(unique(tmp[,1]))
@@ -2708,17 +2698,13 @@ extra_lonlat <- function(x){
 
 # read in proxy locations
 read_proxy_loc <- function(){
-
-tmp <- read.table('~/data/climdata/proxies_EnSRF/temperature_proxies.csv', sep=',', header=TRUE, na.string=c(' -', '-'))
-
+tmp <- read.table(paste0(datadir,'proxies_EnSRF/temperature_proxies.csv'),
+                  sep=',', header=TRUE, na.string=c(' -', '-'))
 lon <- as.character(tmp[[grep('Longitude', names(tmp))]])
 lat <- as.character(tmp[[grep('Latitude', names(tmp))]])
-
 lola <- list()
 for (i in seq(along=lon)) lola[[i]] <- c(lon[i], lat[i])
-
 proxy <- lapply(lola, extra_lonlat)
-#proxy[[45]][1,3:4] <- 40
 proxies <- compute_lonlat(cbind(lon, lat))
 # remove duplicates
 proxies <- proxies[!duplicated(proxies) & !is.na(proxies[,1]),]
@@ -4093,9 +4079,9 @@ compute_weights <- function(l_dist_slp=l_dist_slp, l_dist_precip=l_dist_precip,
                             l_dist=l_dist){
 #
 if (addbias) {
-  load(paste("../data/echam_addbias_",syr,"-",eyr,".Rdata",sep=""))
+  load(paste("../data/echam/echam_addbias_",syr,"-",eyr,".Rdata",sep=""))
 } else {
-  load(paste("../data/echam_",syr,"-",eyr,".Rdata",sep=""))
+  load(paste("../data/echam/echam_",syr,"-",eyr,".Rdata",sep=""))
 }  
 dist.outer <- array(0, c(length(echam$lon),length(echam$lon)))
 dist.outer.stream <- array(0, c(length(echam$lonstream),length(echam$lon)))
@@ -4275,7 +4261,7 @@ if (addbias) {
   d.weights_all <- cbind(d.weights1,d.weights2,d.weights3,d.weights4,d.weights5,d.weights6,d.weights7,d.weights8,d.weights9,d.weights10) 
 }  
 
-save(d.weights_all, file='../data/distance_weights.Rdata')
+save(d.weights_all, file='../data/weights/distance_weights.Rdata')
 rm(d.weights1,d.weights2,d.weights3,d.weights4,d.weights5,d.weights6,d.weights7,d.weights8,d.weights9,d.weights10,d.weights11,d.weights12) 
 
 }
@@ -4899,7 +4885,7 @@ is.odd <- function(x) x %% 2 != 0
 
 # 
 # # NEW read in year by year more efficiently, therefore put ensemble together later
-# read_pdsi <- function(filehead, path=echallvarnewpath, xlim=c(-180,180), ylim=c(-90,90), 
+# read_pdsi <- function(filehead, path=echallvarpath, xlim=c(-180,180), ylim=c(-90,90), 
 #                         timlim=c(1600, 2005), small=F, landonly=F, anom=F, clim=F, std=F){
 #   # read in the land-sea mask of echam
 #   # mask out sea grid boxes (no variability)
@@ -5076,7 +5062,7 @@ read_pdsi <- function(filehead, path=echpath, xlim=c(-180,180), ylim=c(-90,90), 
         } else {
           data <- array(data, c(dim(data)[1]*dim(data)[2], dim(data)[3]))
         }
-        if ((path == echpath) | (path == echallvarnewpath) | (path == echallvarnewpath)) {
+        if ((path == echpath) | (path == echallvarpath) | (path == echallvarpath)) {
           if (varname == 'temp2') data <- data - 273.15
           if (varname == 'precip') data <- data * 3600 * 24 * 30
           if (varname == 'slp') data <- data / 100
